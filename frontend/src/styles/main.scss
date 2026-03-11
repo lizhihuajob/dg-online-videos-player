@@ -1,0 +1,13 @@
+// 主题颜色
+$primary-color: #6366f1;
+$primary-hover: #4f46e5;
+$secondary-color: #ec4899;
+$background-gradient: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+$card-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -1px rgba(0, 0, 0, 0.2);
+$card-hover-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.4), 0 4px 6px -2px rgba(0, 0, 0, 0.3);
+$border-radius: 16px;
+$transition: all 0.3s ease;
+
+// 响应式断点
+$mobile-breakpoint: 768px;
+$tablet-breakpoint: 1024px;
