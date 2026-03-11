@@ -24,9 +24,9 @@
           </div>
           
           <div class="history-sidebar-list">
-            <div 
-              v-for="(item, index) in history" 
-              :key="index" 
+            <div
+              v-for="(item, index) in history"
+              :key="item.id || index"
               class="history-sidebar-item"
               :class="{ 'is-active': currentUrl === item.url, 'is-local': item.isLocal }"
               @dblclick="playHistoryItem(item, index)"
@@ -170,6 +170,7 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import VideoPlayer from '@/components/VideoPlayer.vue'
+import { apiService } from '@/services/api.js'
 
 const currentUrl = ref('')
 const currentFormat = ref('mp4')
@@ -181,24 +182,55 @@ const history = ref([])
 const sessionId = Math.random().toString(36).substring(7) // 当前会话 ID
 const pendingReuploadIndex = ref(-1) // 记录正在尝试恢复的本地记录索引
 const fileInput = ref(null)
+const backendAvailable = ref(false)
 
-onMounted(() => {
+onMounted(async () => {
+  // 检查后端服务是否可用
+  backendAvailable.value = await apiService.healthCheck()
+  
+  if (backendAvailable.value) {
+    // 从后端获取播放记录
+    try {
+      const data = await apiService.getHistory()
+      history.value = data.map(item => ({
+        id: item.id,
+        url: item.url,
+        name: item.name,
+        timestamp: new Date(item.timestamp).getTime(),
+        isLocal: item.isLocal,
+        sid: item.isLocal ? sessionId : null,
+        format: item.format
+      }))
+    } catch (error) {
+      console.error('加载播放记录失败:', error)
+      // 如果后端获取失败，尝试从 localStorage 加载
+      loadFromLocalStorage()
+    }
+  } else {
+    // 后端不可用，使用 localStorage
+    loadFromLocalStorage()
+  }
+})
+
+const loadFromLocalStorage = () => {
   const savedHistory = localStorage.getItem('video-history')
   if (savedHistory) {
     history.value = JSON.parse(savedHistory)
   }
-})
+}
 
-const addToHistory = (url, name = '') => {
+const addToHistory = async (url, name = '') => {
   const isLocal = url.startsWith('blob:')
   const displayName = name || url.split('/').pop().split('?')[0]
+  const format = isLocal ? name.split('.').pop().toLowerCase() : getFormat(url)
   
   const newItem = {
     url,
     name: displayName,
     timestamp: Date.now(),
-    isLocal, // 标记是否为本地文件
-    sid: isLocal ? sessionId : null // 记录会话 ID
+    isLocal,
+    sid: isLocal ? sessionId : null,
+    format
   }
   
   // 移除重复项：如果是本地文件按名称匹配，否则按 URL 匹配
@@ -216,17 +248,51 @@ const addToHistory = (url, name = '') => {
     history.value = history.value.slice(0, 10)
   }
   
+  // 保存到 localStorage 作为备份
   localStorage.setItem('video-history', JSON.stringify(history.value))
+  
+  // 如果后端可用，同步保存到后端
+  if (backendAvailable.value && !isLocal) {
+    try {
+      await apiService.addHistory({
+        url,
+        name: displayName,
+        format,
+        isLocal
+      })
+    } catch (error) {
+      console.error('保存到后端失败:', error)
+    }
+  }
 }
 
-const clearHistory = () => {
+const clearHistory = async () => {
   history.value = []
   localStorage.removeItem('video-history')
+  
+  // 如果后端可用，清除后端记录
+  if (backendAvailable.value) {
+    try {
+      await apiService.clearHistory()
+    } catch (error) {
+      console.error('清除后端记录失败:', error)
+    }
+  }
 }
 
-const removeHistoryItem = (index) => {
+const removeHistoryItem = async (index) => {
+  const item = history.value[index]
   history.value.splice(index, 1)
   localStorage.setItem('video-history', JSON.stringify(history.value))
+  
+  // 如果后端可用且记录有 ID，从后端删除
+  if (backendAvailable.value && item.id) {
+    try {
+      await apiService.deleteHistoryItem(item.id)
+    } catch (error) {
+      console.error('删除后端记录失败:', error)
+    }
+  }
 }
 
 const playHistoryItem = (item, index) => {
