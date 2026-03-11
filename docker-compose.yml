@@ -9,8 +9,24 @@ services:
     ports:
       - "3000:80"
     restart: unless-stopped
+    depends_on:
+      - backend
     networks:
       - video-player-network
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: video-player-backend
+    restart: unless-stopped
+    volumes:
+      - video-player-data:/data
+    networks:
+      - video-player-network
+
+volumes:
+  video-player-data:
 
 networks:
   video-player-network:
