@@ -122,8 +122,9 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { videoData } from '@/data/videos'
 import VideoPlayer from '@/components/VideoPlayer.vue'
+
+const API_BASE = '/api'
 
 const router = useRouter()
 const route = useRoute()
@@ -132,12 +133,28 @@ const videos = ref([])
 const loading = ref(true)
 const currentVideo = ref(null)
 
+const savePlayRecord = async (video) => {
+  try {
+    await fetch(`${API_BASE}/play-records`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        video_id: String(video.id),
+        video_title: video.title,
+        video_url: video.url
+      })
+    })
+  } catch (err) {
+    console.warn('保存播放记录失败:', err)
+  }
+}
+
 onMounted(async () => {
   const id = route.params.id
-  videos.value = videoData
   
   if (id === 'online' || id === 'local') {
-    // 处理动态视频
     currentVideo.value = {
       id,
       title: route.query.title || (id === 'online' ? '在线视频' : '本地视频'),
@@ -148,16 +165,19 @@ onMounted(async () => {
       duration: '--:--'
     }
     loading.value = false
+    savePlayRecord(currentVideo.value)
   } else {
     try {
-      // 模拟网络请求延迟
-      await new Promise(resolve => setTimeout(resolve, 300))
-      const video = videoData.find(v => v.id === parseInt(id))
+      const res = await fetch(`${API_BASE}/videos`)
+      videos.value = await res.json()
+      const video = videos.value.find(v => String(v.id) === id)
       if (video) {
         currentVideo.value = video
+        savePlayRecord(video)
       }
       loading.value = false
     } catch (err) {
+      console.error('获取视频列表失败:', err)
       loading.value = false
     }
   }

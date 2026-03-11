@@ -171,6 +171,26 @@
 import { ref, onMounted } from 'vue'
 import VideoPlayer from '@/components/VideoPlayer.vue'
 
+const API_BASE = '/api'
+
+const savePlayRecord = async (url, title) => {
+  try {
+    await fetch(`${API_BASE}/play-records`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        video_id: url,
+        video_title: title || url.split('/').pop().split('?')[0],
+        video_url: url
+      })
+    })
+  } catch (err) {
+    console.warn('保存播放记录失败:', err)
+  }
+}
+
 const currentUrl = ref('')
 const currentFormat = ref('mp4')
 const inputUrl = ref('https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8')
@@ -281,6 +301,7 @@ const playFile = (file) => {
   currentUrl.value = url
   currentFormat.value = file.name.split('.').pop().toLowerCase()
   addToHistory(url, file.name)
+  savePlayRecord(url, file.name)
 }
 
 const loadUrlVideo = () => {
@@ -288,6 +309,7 @@ const loadUrlVideo = () => {
   currentUrl.value = inputUrl.value
   currentFormat.value = getFormat(inputUrl.value)
   addToHistory(inputUrl.value)
+  savePlayRecord(inputUrl.value, inputUrl.value.split('/').pop().split('?')[0])
 }
 
 const resetUrl = () => {
