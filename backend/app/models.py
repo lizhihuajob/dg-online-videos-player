@@ -1,7 +1,7 @@
 from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Text
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
-from database import Base
+from .database import Base
 
 class User(Base):
     __tablename__ = "users"
@@ -36,7 +36,7 @@ class LocalPlayHistory(Base):
     user_id = Column(Integer, ForeignKey("users.id"))
     video_name = Column(String(255))
     video_format = Column(String(10))
-    file_info = Column(Text)  # JSON string storing file info (name, size, type, lastModified)
+    file_info = Column(Text)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     user = relationship("User", back_populates="local_play_history")

@@ -217,7 +217,7 @@
           <svg class="error-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
           </svg>
-          <h3>播放失败</h3>
+          <h3>{{ errorTitle }}</h3>
         </div>
         <p>{{ errorMessage }}</p>
         <button class="modal-btn" @click="showError = false">确定</button>
@@ -339,6 +339,13 @@
                   </svg>
                 </button>
               </div>
+              <div v-if="selectedLocalFile && isLoggedIn" class="upload-to-server-option">
+                <label class="checkbox-label">
+                  <input type="checkbox" v-model="uploadToServer" class="checkbox-input">
+                  <span class="checkbox-custom"></span>
+                  <span class="checkbox-text">上传到服务器（可跨设备播放）</span>
+                </label>
+              </div>
             </div>
           </template>
 
@@ -364,6 +371,7 @@ const inputUrl = ref('https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8')
 const dragOver = ref(false)
 const showError = ref(false)
 const errorMessage = ref('')
+const errorTitle = ref('播放失败')
 const showSuccess = ref(false)
 const successMessage = ref('')
 const onlineHistory = ref([])
@@ -393,6 +401,7 @@ const DEFAULT_VIDEO_URL = 'https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8'
 const newVideoUrl = ref(DEFAULT_VIDEO_URL)
 const newVideoName = ref('')
 const selectedLocalFile = ref(null)
+const uploadToServer = ref(false)
 
 const isLoggedIn = computed(() => !!currentUser.value)
 
@@ -464,10 +473,12 @@ const handleAuth = async () => {
       }
     } else {
       const error = await response.json()
+      errorTitle.value = isLoginMode.value ? '登录失败' : '注册失败'
       showError.value = true
       errorMessage.value = error.detail || '操作失败'
     }
   } catch (err) {
+    errorTitle.value = isLoginMode.value ? '登录失败' : '注册失败'
     showError.value = true
     errorMessage.value = '网络错误'
   }
@@ -771,7 +782,7 @@ const handlePlayerError = (err) => {
   showError.value = true
 }
 
-const addVideoAndPlay = () => {
+const addVideoAndPlay = async () => {
   if (videoType.value === 'online') {
     // 在线视频
     if (!newVideoUrl.value.trim()) {
@@ -794,11 +805,41 @@ const addVideoAndPlay = () => {
       return
     }
 
-    // 播放本地文件，传入文件信息用于后续验证
-    const url = URL.createObjectURL(selectedLocalFile.value)
-    currentUrl.value = url
-    currentFormat.value = selectedLocalFile.value.name.split('.').pop().toLowerCase()
-    addToHistory(url, selectedLocalFile.value.name, selectedLocalFile.value)
+    if (uploadToServer.value && isLoggedIn.value) {
+      try {
+        const formData = new FormData()
+        formData.append('file', selectedLocalFile.value)
+        
+        const response = await apiRequest('/videos/upload', {
+          method: 'POST',
+          headers: {},
+          body: formData
+        })
+        
+        if (response.ok) {
+          const data = await response.json()
+          currentUrl.value = API_BASE + data.video_url
+          currentFormat.value = data.video_format
+          addToHistory(currentUrl.value, data.video_name || selectedLocalFile.value.name)
+          showSuccess.value = true
+          successMessage.value = '视频已上传到服务器'
+        } else {
+          const error = await response.json()
+          errorMessage.value = error.detail || '上传失败'
+          showError.value = true
+          return
+        }
+      } catch (err) {
+        errorMessage.value = '上传失败：' + err.message
+        showError.value = true
+        return
+      }
+    } else {
+      const url = URL.createObjectURL(selectedLocalFile.value)
+      currentUrl.value = url
+      currentFormat.value = selectedLocalFile.value.name.split('.').pop().toLowerCase()
+      addToHistory(url, selectedLocalFile.value.name, selectedLocalFile.value)
+    }
   }
 
   // 关闭弹窗并清空输入
@@ -810,6 +851,7 @@ const closeAddVideoModal = () => {
   newVideoUrl.value = DEFAULT_VIDEO_URL
   newVideoName.value = ''
   selectedLocalFile.value = null
+  uploadToServer.value = false
   videoType.value = 'online'
 }
 
@@ -1742,6 +1784,58 @@ const handleModalFileSelect = (e) => {
             width: 16px;
             height: 16px;
           }
+        }
+      }
+
+      .upload-to-server-option {
+        margin-top: 16px;
+        padding: 12px 16px;
+        background: rgba(34, 197, 94, 0.1);
+        border: 1px solid rgba(34, 197, 94, 0.2);
+        border-radius: 10px;
+
+        .checkbox-label {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          cursor: pointer;
+          user-select: none;
+        }
+
+        .checkbox-input {
+          display: none;
+        }
+
+        .checkbox-custom {
+          width: 20px;
+          height: 20px;
+          border: 2px solid rgba(99, 102, 241, 0.5);
+          border-radius: 4px;
+          position: relative;
+          transition: all 0.2s;
+          flex-shrink: 0;
+
+          .checkbox-input:checked + & {
+            background: #6366f1;
+            border-color: #6366f1;
+
+            &::after {
+              content: '';
+              position: absolute;
+              left: 5px;
+              top: 2px;
+              width: 6px;
+              height: 10px;
+              border: solid white;
+              border-width: 0 2px 2px 0;
+              transform: rotate(45deg);
+            }
+          }
+        }
+
+        .checkbox-text {
+          color: #a5b4fc;
+          font-size: 0.9rem;
         }
       }
     }
