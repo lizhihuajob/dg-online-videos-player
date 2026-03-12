@@ -339,12 +339,28 @@
                   </svg>
                 </button>
               </div>
+              
+              <!-- 上传到服务器复选框 -->
+              <div class="upload-server-option" v-if="isLoggedIn">
+                <label class="checkbox-wrapper">
+                  <input 
+                    type="checkbox" 
+                    v-model="uploadToServer"
+                  >
+                  <span class="checkmark"></span>
+                  <span class="checkbox-label">上传到视频服务</span>
+                </label>
+                <span class="upload-hint-text">上传后可通过链接播放，永久保存</span>
+              </div>
             </div>
           </template>
 
           <div class="add-video-actions">
-            <button class="modal-btn secondary" @click="closeAddVideoModal">取消</button>
-            <button class="modal-btn primary" @click="addVideoAndPlay">确定</button>
+            <button class="modal-btn secondary" @click="closeAddVideoModal" :disabled="isUploading">取消</button>
+            <button class="modal-btn primary" @click="addVideoAndPlay" :disabled="isUploading">
+              <span v-if="isUploading">上传中...</span>
+              <span v-else>确定</span>
+            </button>
           </div>
         </div>
       </div>
@@ -393,6 +409,8 @@ const DEFAULT_VIDEO_URL = 'https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8'
 const newVideoUrl = ref(DEFAULT_VIDEO_URL)
 const newVideoName = ref('')
 const selectedLocalFile = ref(null)
+const uploadToServer = ref(false) // 是否上传到服务器
+const isUploading = ref(false) // 上传中状态
 
 const isLoggedIn = computed(() => !!currentUser.value)
 
@@ -771,7 +789,7 @@ const handlePlayerError = (err) => {
   showError.value = true
 }
 
-const addVideoAndPlay = () => {
+const addVideoAndPlay = async () => {
   if (videoType.value === 'online') {
     // 在线视频
     if (!newVideoUrl.value.trim()) {
@@ -786,6 +804,9 @@ const addVideoAndPlay = () => {
 
     // 添加到历史记录
     addToHistory(currentUrl.value, newVideoName.value.trim() || '')
+    
+    // 关闭弹窗并清空输入
+    closeAddVideoModal()
   } else {
     // 本地视频
     if (!selectedLocalFile.value) {
@@ -794,15 +815,56 @@ const addVideoAndPlay = () => {
       return
     }
 
-    // 播放本地文件，传入文件信息用于后续验证
-    const url = URL.createObjectURL(selectedLocalFile.value)
-    currentUrl.value = url
-    currentFormat.value = selectedLocalFile.value.name.split('.').pop().toLowerCase()
-    addToHistory(url, selectedLocalFile.value.name, selectedLocalFile.value)
-  }
+    // 如果勾选了上传到服务器
+    if (uploadToServer.value && isLoggedIn.value) {
+      isUploading.value = true
+      try {
+        const formData = new FormData()
+        formData.append('video', selectedLocalFile.value)
+        formData.append('video_name', newVideoName.value.trim() || selectedLocalFile.value.name)
 
-  // 关闭弹窗并清空输入
-  closeAddVideoModal()
+        const response = await apiRequest('/upload/video', {
+          method: 'POST',
+          body: formData
+        })
+
+        if (response.ok) {
+          const data = await response.json()
+          // 使用服务器返回的播放链接
+          currentUrl.value = `${API_BASE}${data.play_url}`
+          currentFormat.value = data.video_format
+          
+          // 添加到历史记录（作为在线视频）
+          await addToHistory(currentUrl.value, data.video_name, null)
+          
+          showSuccess.value = true
+          successMessage.value = '视频上传成功，正在播放...'
+          
+          // 关闭弹窗并清空输入
+          closeAddVideoModal()
+        } else {
+          const error = await response.json()
+          errorMessage.value = error.detail || '上传失败'
+          showError.value = true
+        }
+      } catch (err) {
+        console.error('Upload error:', err)
+        errorMessage.value = '上传失败，请检查网络连接'
+        showError.value = true
+      } finally {
+        isUploading.value = false
+      }
+    } else {
+      // 不上传，直接播放本地文件
+      const url = URL.createObjectURL(selectedLocalFile.value)
+      currentUrl.value = url
+      currentFormat.value = selectedLocalFile.value.name.split('.').pop().toLowerCase()
+      addToHistory(url, selectedLocalFile.value.name, selectedLocalFile.value)
+      
+      // 关闭弹窗并清空输入
+      closeAddVideoModal()
+    }
+  }
 }
 
 const closeAddVideoModal = () => {
@@ -811,6 +873,8 @@ const closeAddVideoModal = () => {
   newVideoName.value = ''
   selectedLocalFile.value = null
   videoType.value = 'online'
+  uploadToServer.value = false
+  isUploading.value = false
 }
 
 const handleModalFileSelect = (e) => {
@@ -1744,6 +1808,70 @@ const handleModalFileSelect = (e) => {
           }
         }
       }
+
+      .upload-server-option {
+        margin-top: 16px;
+        padding: 12px 16px;
+        background: rgba(99, 102, 241, 0.05);
+        border: 1px solid rgba(99, 102, 241, 0.15);
+        border-radius: 10px;
+
+        .checkbox-wrapper {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          cursor: pointer;
+
+          input[type="checkbox"] {
+            display: none;
+
+            &:checked + .checkmark {
+              background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+              border-color: #6366f1;
+
+              &::after {
+                content: '';
+                position: absolute;
+                left: 5px;
+                top: 2px;
+                width: 4px;
+                height: 8px;
+                border: solid white;
+                border-width: 0 2px 2px 0;
+                transform: rotate(45deg);
+              }
+            }
+          }
+
+          .checkmark {
+            position: relative;
+            width: 18px;
+            height: 18px;
+            background: rgba(15, 23, 42, 0.6);
+            border: 1px solid rgba(99, 102, 241, 0.3);
+            border-radius: 4px;
+            transition: all 0.2s;
+          }
+
+          .checkbox-label {
+            color: #c7d2fe;
+            font-size: 0.9rem;
+            font-weight: 500;
+          }
+
+          &:hover .checkmark {
+            border-color: rgba(99, 102, 241, 0.5);
+          }
+        }
+
+        .upload-hint-text {
+          display: block;
+          margin-top: 6px;
+          margin-left: 28px;
+          color: #64748b;
+          font-size: 0.75rem;
+        }
+      }
     }
 
     .add-video-actions {
@@ -1766,6 +1894,18 @@ const handleModalFileSelect = (e) => {
             background: rgba(71, 85, 105, 0.8);
             transform: translateY(-1px);
           }
+
+          &:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+          }
+        }
+
+        &:disabled {
+          opacity: 0.6;
+          cursor: not-allowed;
+          transform: none;
         }
       }
     }

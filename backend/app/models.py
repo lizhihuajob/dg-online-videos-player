@@ -1,7 +1,7 @@
 from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Text
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
-from database import Base
+from app.database import Base
 
 class User(Base):
     __tablename__ = "users"
@@ -14,6 +14,7 @@ class User(Base):
 
     play_history = relationship("PlayHistory", back_populates="user", cascade="all, delete-orphan")
     local_play_history = relationship("LocalPlayHistory", back_populates="user", cascade="all, delete-orphan")
+    uploaded_videos = relationship("UploadedVideo", back_populates="user", cascade="all, delete-orphan")
 
 
 class PlayHistory(Base):
@@ -40,3 +41,18 @@ class LocalPlayHistory(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     user = relationship("User", back_populates="local_play_history")
+
+
+class UploadedVideo(Base):
+    """用户上传的视频文件"""
+    __tablename__ = "uploaded_videos"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"))
+    video_name = Column(String(255))
+    video_format = Column(String(10))
+    file_path = Column(Text)  # 存储的文件路径
+    file_size = Column(Integer)  # 文件大小（字节）
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    user = relationship("User", back_populates="uploaded_videos")
