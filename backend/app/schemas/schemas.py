@@ -1,0 +1,59 @@
+from pydantic import BaseModel, EmailStr, Field
+from typing import Optional
+from datetime import datetime
+
+
+class UserBase(BaseModel):
+    username: str = Field(..., min_length=3, max_length=50)
+    email: EmailStr
+
+
+class UserCreate(UserBase):
+    password: str = Field(..., min_length=6, max_length=100)
+
+
+class UserLogin(BaseModel):
+    username: str
+    password: str
+
+
+class UserResponse(UserBase):
+    id: int
+    is_active: bool
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class Token(BaseModel):
+    access_token: str
+    token_type: str = "bearer"
+
+
+class TokenData(BaseModel):
+    username: Optional[str] = None
+
+
+class PlayHistoryBase(BaseModel):
+    video_url: str
+    video_name: Optional[str] = None
+    video_format: Optional[str] = None
+    is_local: bool = False
+
+
+class PlayHistoryCreate(PlayHistoryBase):
+    pass
+
+
+class PlayHistoryResponse(PlayHistoryBase):
+    id: int
+    user_id: int
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class MessageResponse(BaseModel):
+    message: str
