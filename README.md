@@ -12,6 +12,30 @@
 
 ## 🔗 服务地址 (Services)
 - Frontend: http://localhost:3000
+- Backend API: http://localhost:8000
+
+## 📤 文件上传功能
+本项目支持本地视频文件上传功能：
+
+### 上传API
+- **接口**: `POST /upload`
+- **认证**: 需要 Bearer Token
+- **请求体**: `multipart/form-data` 格式，字段名: `file`
+- **支持格式**: MP4, WebM 等视频格式
+
+### 存储说明
+- 上传的视频文件存储在 `./data` 目录（Docker 卷挂载）
+- 文件使用 UUID 重命名，避免冲突
+- 访问路径: `/uploads/{uuid}.{ext}`
+
+### 示例响应
+```json
+{
+  "filename": "example.mp4",
+  "url": "/uploads/f6306a24-861b-4354-af7c-7b71e9bd884c.mp4",
+  "format": "mp4"
+}
+```
 
 ## ✨ 功能特性
 - 📱 完美支持移动端 H5

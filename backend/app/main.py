@@ -1,4 +1,8 @@
-from fastapi import FastAPI, Depends, HTTPException, status
+from fastapi import FastAPI, Depends, HTTPException, status, File, UploadFile
+from fastapi.staticfiles import StaticFiles
+import os
+import shutil
+import uuid
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
@@ -6,13 +10,16 @@ from datetime import timedelta
 from pydantic import BaseModel
 from typing import List
 from jose import JWTError, jwt
-import models
-import database
-import auth
+from . import models, database, auth
 
 models.Base.metadata.create_all(bind=database.engine)
 
 app = FastAPI(title="Video Player API")
+
+UPLOAD_DIR = "/app/uploads"
+os.makedirs(UPLOAD_DIR, exist_ok=True)
+
+app.mount("/uploads", StaticFiles(directory=UPLOAD_DIR), name="uploads")
 
 app.add_middleware(
     CORSMiddleware,
@@ -308,6 +315,27 @@ def clear_local_play_history(
     db.commit()
     return {"message": "All local history cleared successfully"}
 
+
+@app.post("/upload")
+async def upload_video(
+    file: UploadFile = File(...),
+    current_user: models.User = Depends(get_current_user)
+):
+    if not file.content_type or not file.content_type.startswith("video/"):
+        raise HTTPException(status_code=400, detail="File must be a video")
+    
+    file_ext = os.path.splitext(file.filename)[1] if file.filename else ".mp4"
+    unique_filename = f"{uuid.uuid4()}{file_ext}"
+    file_path = os.path.join(UPLOAD_DIR, unique_filename)
+    
+    with open(file_path, "wb") as buffer:
+        shutil.copyfileobj(file.file, buffer)
+    
+    return {
+        "filename": file.filename,
+        "url": f"/uploads/{unique_filename}",
+        "format": file_ext.lstrip(".")
+    }
 
 @app.get("/")
 def root():
