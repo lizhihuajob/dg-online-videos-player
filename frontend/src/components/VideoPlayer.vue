@@ -13,10 +13,8 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onBeforeUnmount, watch } from 'vue'
+import { ref, onMounted, onBeforeUnmount, watch, nextTick } from 'vue'
 import Player from 'xgplayer'
-import HlsPlugin from 'xgplayer-hls'
-import FlvPlugin from 'xgplayer-flv'
 import 'xgplayer/dist/index.min.css'
 
 const props = defineProps({
@@ -27,15 +25,74 @@ const props = defineProps({
   format: {
     type: String,
     default: 'mp4'
+  },
+  hasPrev: {
+    type: Boolean,
+    default: false
+  },
+  hasNext: {
+    type: Boolean,
+    default: false
   }
 })
 
-const emit = defineEmits(['ready', 'error', 'timeupdate'])
+const emit = defineEmits(['ready', 'error', 'timeupdate', 'prev', 'next'])
 
 const videoContainer = ref(null)
 let player = null
 const error = ref(null)
 const loading = ref(true)
+
+const addCustomButtons = async () => {
+  if (!player || !player.root) return
+
+  // 等待控制栏渲染完成
+  await nextTick()
+
+  const controls = player.root.querySelector('.xgplayer-controls')
+  const playBtn = player.root.querySelector('.xgplayer-play')
+  if (!controls || !playBtn) {
+    // 如果控制栏还没渲染，延迟再试
+    setTimeout(addCustomButtons, 100)
+    return
+  }
+
+  // 移除已存在的自定义按钮
+  const existingPrev = controls.querySelector('.xgplayer-prev-btn')
+  const existingNext = controls.querySelector('.xgplayer-next-btn')
+  if (existingPrev) existingPrev.remove()
+  if (existingNext) existingNext.remove()
+
+  // 添加上一个按钮
+  if (props.hasPrev) {
+    const prevBtn = document.createElement('div')
+    prevBtn.className = 'xgplayer-prev-btn xgplayer-custom-btn'
+    prevBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 6h2v12H6V6zm3.5 6l8.5 6V6l-8.5 6z"/></svg>'
+    prevBtn.title = '上一个'
+    prevBtn.style.cssText = 'width:40px;height:40px;display:flex;align-items:center;justify-content:center;cursor:pointer;margin:0 4px;'
+    prevBtn.addEventListener('click', (e) => {
+      e.stopPropagation()
+      e.preventDefault()
+      emit('prev')
+    })
+    playBtn.insertAdjacentElement('afterend', prevBtn)
+  }
+
+  // 添加下一个按钮
+  if (props.hasNext) {
+    const nextBtn = document.createElement('div')
+    nextBtn.className = 'xgplayer-next-btn xgplayer-custom-btn'
+    nextBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"/></svg>'
+    nextBtn.title = '下一个'
+    nextBtn.style.cssText = 'width:40px;height:40px;display:flex;align-items:center;justify-content:center;cursor:pointer;margin:0 4px;'
+    nextBtn.addEventListener('click', (e) => {
+      e.stopPropagation()
+      e.preventDefault()
+      emit('next')
+    })
+    playBtn.insertAdjacentElement('afterend', nextBtn)
+  }
+}
 
 const initPlayer = () => {
   if (!videoContainer.value || !props.url) return
@@ -50,17 +107,6 @@ const initPlayer = () => {
   loading.value = true
 
   try {
-    const plugins = []
-    const isHls = props.format === 'm3u8' || props.url.includes('.m3u8') || props.url.includes('livetv')
-    const isRtmp = props.url.startsWith('rtmp://')
-    const isFlv = props.format === 'flv' || props.url.includes('.flv')
-
-    if (isHls) {
-      plugins.push(HlsPlugin)
-    } else if (isRtmp || isFlv) {
-      plugins.push(FlvPlugin)
-    }
-
     const config = {
       el: videoContainer.value,
       url: props.url,
@@ -82,17 +128,7 @@ const initPlayer = () => {
       closeVideoDblclick: false,
       progressDot: true,
       miniProgressBar: true,
-      controls: true,
-      plugins: plugins
-    }
-
-    // RTMP 流特殊配置
-    if (isRtmp) {
-      config.flv = {
-        type: 'flv',
-        isLive: true,
-        url: props.url
-      }
+      controls: true
     }
 
     player = new Player(config)
@@ -107,6 +143,8 @@ const initPlayer = () => {
     player.on('ready', () => {
       loading.value = false
       emit('ready')
+      // 添加自定义上一个/下一个按钮
+      addCustomButtons()
     })
 
     player.on('canplay', () => {
@@ -196,6 +234,34 @@ watch([() => props.url, () => props.format], () => {
 
     .xgplayer-time {
       color: #e2e8f0 !important;
+    }
+
+    .xgplayer-custom-btn {
+      width: 40px !important;
+      height: 40px !important;
+      display: flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+      cursor: pointer !important;
+      margin: 0 4px !important;
+      flex-shrink: 0 !important;
+
+      svg {
+        width: 24px !important;
+        height: 24px !important;
+        color: #e2e8f0 !important;
+        transition: all 0.2s ease;
+        pointer-events: none;
+      }
+
+      &:hover svg {
+        color: #6366f1 !important;
+        transform: scale(1.1);
+      }
+
+      &:active svg {
+        transform: scale(0.95);
+      }
     }
   }
 }
