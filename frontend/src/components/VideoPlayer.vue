@@ -1,6 +1,7 @@
 <template>
   <div class="video-player-container">
     <div ref="videoContainer" class="video-wrapper"></div>
+
     <div v-if="loading" class="loading-overlay">
       <div class="spinner"></div>
       <p>正在加载视频...</p>
@@ -27,10 +28,39 @@ const props = defineProps({
   format: {
     type: String,
     default: 'mp4'
+  },
+  showPrevNext: {
+    type: Boolean,
+    default: false
   }
 })
 
-const emit = defineEmits(['ready', 'error', 'timeupdate'])
+const emit = defineEmits(['ready', 'error', 'timeupdate', 'prev', 'next'])
+
+const addPrevNextButtons = () => {
+  if (!videoContainer.value) return
+
+  const controls = videoContainer.value.querySelector('.xgplayer-controls .xgplayer-left')
+  if (!controls) return
+
+  const playBtn = controls.querySelector('.xgplayer-play')
+  if (!playBtn) return
+
+  const prevBtn = document.createElement('button')
+  prevBtn.className = 'xgplayer-prev xgplayer-icon'
+  prevBtn.title = '上一个'
+  prevBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M16 5v14l-11-7z"/></svg>'
+  prevBtn.addEventListener('click', () => emit('prev'))
+
+  const nextBtn = document.createElement('button')
+  nextBtn.className = 'xgplayer-next xgplayer-icon'
+  nextBtn.title = '下一个'
+  nextBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>'
+  nextBtn.addEventListener('click', () => emit('next'))
+
+  playBtn.insertAdjacentElement('afterend', prevBtn)
+  playBtn.nextElementSibling.insertAdjacentElement('afterend', nextBtn)
+}
 
 const videoContainer = ref(null)
 let player = null
@@ -106,6 +136,9 @@ const initPlayer = () => {
 
     player.on('ready', () => {
       loading.value = false
+      if (props.showPrevNext) {
+        addPrevNextButtons()
+      }
       emit('ready')
     })
 
@@ -197,6 +230,29 @@ watch([() => props.url, () => props.format], () => {
     .xgplayer-time {
       color: #e2e8f0 !important;
     }
+
+    .xgplayer-prev, .xgplayer-next {
+      width: 40px;
+      height: 40px;
+      border: none;
+      background: transparent;
+      color: white;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      opacity: 0.85;
+      transition: opacity 0.2s ease;
+
+      &:hover {
+        opacity: 1;
+      }
+
+      svg {
+        width: 20px;
+        height: 20px;
+      }
+    }
   }
 }
 
@@ -264,4 +320,6 @@ watch([() => props.url, () => props.format], () => {
 @keyframes spin {
   to { transform: rotate(360deg); }
 }
+
+
 </style>
