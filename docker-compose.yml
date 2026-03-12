@@ -2,8 +2,8 @@ version: '3.8'
 
 services:
   postgres:
-    image: postgres:18-alpine
-    container_name: video-player-postgres
+    image: postgres:16-alpine
+    container_name: seed-video-player-postgres
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
@@ -25,11 +25,13 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    container_name: video-player-backend
+    container_name: seed-video-player-backend
     environment:
       DATABASE_URL: postgresql://postgres:postgres@postgres/video_player
     ports:
       - "8000:8000"
+    volumes:
+      - ./data:/app/uploads
     restart: unless-stopped
     depends_on:
       postgres:
@@ -41,7 +43,7 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
-    container_name: video-player-frontend
+    container_name: seed-video-player-frontend
     ports:
       - "3000:80"
     restart: unless-stopped

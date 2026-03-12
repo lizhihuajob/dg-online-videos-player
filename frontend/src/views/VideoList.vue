@@ -339,6 +339,13 @@
                   </svg>
                 </button>
               </div>
+              <div class="upload-option" v-if="currentUser">
+                <label class="checkbox-label">
+                  <input type="checkbox" v-model="uploadToServer" class="upload-checkbox">
+                  <span class="checkbox-custom"></span>
+                  上传到视频服务
+                </label>
+              </div>
             </div>
           </template>
 
@@ -393,6 +400,7 @@ const DEFAULT_VIDEO_URL = 'https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8'
 const newVideoUrl = ref(DEFAULT_VIDEO_URL)
 const newVideoName = ref('')
 const selectedLocalFile = ref(null)
+const uploadToServer = ref(false)
 
 const isLoggedIn = computed(() => !!currentUser.value)
 
@@ -771,7 +779,7 @@ const handlePlayerError = (err) => {
   showError.value = true
 }
 
-const addVideoAndPlay = () => {
+const addVideoAndPlay = async () => {
   if (videoType.value === 'online') {
     // 在线视频
     if (!newVideoUrl.value.trim()) {
@@ -794,11 +802,38 @@ const addVideoAndPlay = () => {
       return
     }
 
-    // 播放本地文件，传入文件信息用于后续验证
-    const url = URL.createObjectURL(selectedLocalFile.value)
-    currentUrl.value = url
-    currentFormat.value = selectedLocalFile.value.name.split('.').pop().toLowerCase()
-    addToHistory(url, selectedLocalFile.value.name, selectedLocalFile.value)
+    if (uploadToServer.value && isLoggedIn.value) {
+      try {
+        const formData = new FormData()
+        formData.append('file', selectedLocalFile.value)
+        const response = await apiRequest('/upload', {
+          method: 'POST',
+          body: formData
+        })
+        if (response.ok) {
+          const data = await response.json()
+          const serverUrl = `${API_BASE}${data.url}`
+          currentUrl.value = serverUrl
+          currentFormat.value = data.format
+          addToHistory(serverUrl, selectedLocalFile.value.name)
+        } else {
+          const error = await response.json()
+          showError.value = true
+          errorMessage.value = error.detail || '上传失败'
+          return
+        }
+      } catch (err) {
+        showError.value = true
+        errorMessage.value = '上传失败'
+        return
+      }
+    } else {
+      // 播放本地文件，传入文件信息用于后续验证
+      const url = URL.createObjectURL(selectedLocalFile.value)
+      currentUrl.value = url
+      currentFormat.value = selectedLocalFile.value.name.split('.').pop().toLowerCase()
+      addToHistory(url, selectedLocalFile.value.name, selectedLocalFile.value)
+    }
   }
 
   // 关闭弹窗并清空输入
@@ -810,6 +845,7 @@ const closeAddVideoModal = () => {
   newVideoUrl.value = DEFAULT_VIDEO_URL
   newVideoName.value = ''
   selectedLocalFile.value = null
+  uploadToServer.value = false
   videoType.value = 'online'
 }
 
@@ -1741,6 +1777,67 @@ const handleModalFileSelect = (e) => {
           svg {
             width: 16px;
             height: 16px;
+          }
+        }
+      }
+
+      .upload-option {
+        margin-top: 16px;
+        padding: 12px 16px;
+        background: rgba(99, 102, 241, 0.05);
+        border: 1px solid rgba(99, 102, 241, 0.15);
+        border-radius: 10px;
+
+        .checkbox-label {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          cursor: pointer;
+          color: #e2e8f0;
+          font-size: 0.9rem;
+          user-select: none;
+
+          .upload-checkbox {
+            display: none;
+          }
+
+          .checkbox-custom {
+            width: 18px;
+            height: 18px;
+            border: 2px solid rgba(99, 102, 241, 0.4);
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s ease;
+            background: rgba(15, 23, 42, 0.6);
+            position: relative;
+
+            &::after {
+              content: '';
+              width: 10px;
+              height: 5px;
+              border-left: 2px solid #f8fafc;
+              border-bottom: 2px solid #f8fafc;
+              transform: rotate(-45deg);
+              opacity: 0;
+              transition: opacity 0.2s ease;
+              margin-bottom: 2px;
+            }
+          }
+
+          .upload-checkbox:checked + .checkbox-custom {
+            background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+            border-color: #6366f1;
+            box-shadow: 0 0 8px rgba(99, 102, 241, 0.4);
+
+            &::after {
+              opacity: 1;
+            }
+          }
+
+          &:hover .checkbox-custom {
+            border-color: rgba(99, 102, 241, 0.6);
           }
         }
       }
