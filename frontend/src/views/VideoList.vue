@@ -11,6 +11,19 @@
             </svg>
             <span>Vision Player</span>
           </div>
+          <div class="user-area" v-if="currentUser">
+            <span class="username">{{ currentUser.username }}</span>
+            <button class="logout-btn" @click="logout" title="退出登录">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/>
+              </svg>
+            </button>
+          </div>
+          <button v-else class="login-btn" @click="showAuthModal = true" title="登录/注册">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2M16 3.13a4 4 0 0 1 0 7.75M21 21v-2a4 4 0 0 0-3-3.87M16 8a6 6 0 0 1 12 0v4a4 4 0 0 1-3 3.87"/>
+            </svg>
+          </button>
         </div>
         
         <div class="history-sidebar-content">
@@ -26,7 +39,7 @@
           <div class="history-sidebar-list">
             <div 
               v-for="(item, index) in history" 
-              :key="index" 
+              :key="item.id || index" 
               class="history-sidebar-item"
               :class="{ 'is-active': currentUrl === item.url, 'is-local': item.isLocal }"
               @dblclick="playHistoryItem(item, index)"
@@ -37,12 +50,12 @@
                   <span v-if="item.isLocal" class="local-tag" :class="{ 'is-expired': item.sid !== sessionId }">
                     {{ item.sid === sessionId ? '本地' : '已失效' }}
                   </span>
-                  <span class="item-name">{{ item.name || item.url }}</span>
+                  <span class="item-name">{{ item.video_name || item.name || item.url }}</span>
                 </div>
-                <span class="item-time">{{ formatTime(item.timestamp) }}</span>
+                <span class="item-time">{{ formatTime(item.timestamp || item.created_at) }}</span>
               </div>
               <div class="item-actions">
-                <button class="delete-item-btn" @click.stop="removeHistoryItem(index)" title="删除记录">
+                <button class="delete-item-btn" @click.stop="removeHistoryItem(item, index)" title="删除记录">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <path d="M18 6L6 18M6 6l12 12"/>
                   </svg>
@@ -151,6 +164,35 @@
       </div>
     </div>
 
+    <!-- Auth Modal -->
+    <div v-if="showAuthModal" class="modal-overlay" @click="showAuthModal = false">
+      <div class="modal-card glass auth-modal" @click.stop>
+        <div class="modal-header">
+          <h3>{{ isLoginMode ? '登录' : '注册' }}</h3>
+        </div>
+        <div class="auth-form">
+          <div class="form-group">
+            <label>用户名</label>
+            <input type="text" v-model="authForm.username" placeholder="请输入用户名">
+          </div>
+          <div class="form-group" v-if="!isLoginMode">
+            <label>邮箱</label>
+            <input type="email" v-model="authForm.email" placeholder="请输入邮箱">
+          </div>
+          <div class="form-group">
+            <label>密码</label>
+            <input type="password" v-model="authForm.password" placeholder="请输入密码">
+          </div>
+          <div class="auth-actions">
+            <button class="modal-btn primary" @click="handleAuth">{{ isLoginMode ? '登录' : '注册' }}</button>
+            <button class="mode-switch" @click="isLoginMode = !isLoginMode">
+              {{ isLoginMode ? '没有账号？点击注册' : '已有账号？点击登录' }}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- Modal for errors -->
     <div v-if="showError" class="modal-overlay" @click="showError = false">
       <div class="modal-card glass" @click.stop>
@@ -164,12 +206,29 @@
         <button class="modal-btn" @click="showError = false">确定</button>
       </div>
     </div>
+
+    <!-- Modal for success messages -->
+    <div v-if="showSuccess" class="modal-overlay" @click="showSuccess = false">
+      <div class="modal-card glass" @click.stop>
+        <div class="modal-header">
+          <svg class="success-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"/>
+            <path d="M9 12l2 2 4-4"/>
+          </svg>
+          <h3>操作成功</h3>
+        </div>
+        <p>{{ successMessage }}</p>
+        <button class="modal-btn" @click="showSuccess = false">确定</button>
+      </div>
+    </div>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import VideoPlayer from '@/components/VideoPlayer.vue'
+
+const API_BASE = 'http://localhost:8000'
 
 const currentUrl = ref('')
 const currentFormat = ref('mp4')
@@ -177,61 +236,193 @@ const inputUrl = ref('https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8')
 const dragOver = ref(false)
 const showError = ref(false)
 const errorMessage = ref('')
+const showSuccess = ref(false)
+const successMessage = ref('')
 const history = ref([])
-const sessionId = Math.random().toString(36).substring(7) // 当前会话 ID
-const pendingReuploadIndex = ref(-1) // 记录正在尝试恢复的本地记录索引
+const sessionId = Math.random().toString(36).substring(7)
+const pendingReuploadIndex = ref(-1)
 const fileInput = ref(null)
 
+const showAuthModal = ref(false)
+const isLoginMode = ref(true)
+const authForm = ref({
+  username: '',
+  email: '',
+  password: ''
+})
+const currentUser = ref(null)
+const accessToken = ref(null)
+
+const isLoggedIn = computed(() => !!currentUser.value)
+
 onMounted(() => {
-  const savedHistory = localStorage.getItem('video-history')
-  if (savedHistory) {
-    history.value = JSON.parse(savedHistory)
+  const token = localStorage.getItem('access_token')
+  const user = localStorage.getItem('current_user')
+  if (token && user) {
+    accessToken.value = token
+    currentUser.value = JSON.parse(user)
+    loadHistoryFromBackend()
   }
 })
 
-const addToHistory = (url, name = '') => {
+const apiRequest = async (endpoint, options = {}) => {
+  const headers = {
+    ...options.headers
+  }
+  if (!(options.body instanceof FormData)) {
+    headers['Content-Type'] = 'application/json'
+  }
+  if (accessToken.value) {
+    headers['Authorization'] = `Bearer ${accessToken.value}`
+  }
+  const response = await fetch(`${API_BASE}${endpoint}`, {
+    ...options,
+    headers
+  })
+  return response
+}
+
+const handleAuth = async () => {
+  try {
+    let response
+    if (isLoginMode.value) {
+      const formData = new FormData()
+      formData.append('username', authForm.value.username)
+      formData.append('password', authForm.value.password)
+      response = await apiRequest('/token', {
+        method: 'POST',
+        headers: {},
+        body: formData
+      })
+    } else {
+      response = await apiRequest('/register', {
+        method: 'POST',
+        body: JSON.stringify({
+          username: authForm.value.username,
+          email: authForm.value.email,
+          password: authForm.value.password
+        })
+      })
+    }
+    
+    if (response.ok) {
+      const data = await response.json()
+      if (isLoginMode.value) {
+        accessToken.value = data.access_token
+        currentUser.value = data.user
+        localStorage.setItem('access_token', data.access_token)
+        localStorage.setItem('current_user', JSON.stringify(data.user))
+        showAuthModal.value = false
+        authForm.value = { username: '', email: '', password: '' }
+        await loadHistoryFromBackend()
+      } else {
+        isLoginMode.value = true
+        authForm.value = { username: '', email: '', password: '' }
+        showSuccess.value = true
+        successMessage.value = '注册成功，请登录'
+      }
+    } else {
+      const error = await response.json()
+      showError.value = true
+      errorMessage.value = error.detail || '操作失败'
+    }
+  } catch (err) {
+    showError.value = true
+    errorMessage.value = '网络错误'
+  }
+}
+
+const logout = () => {
+  currentUser.value = null
+  accessToken.value = null
+  localStorage.removeItem('access_token')
+  localStorage.removeItem('current_user')
+  history.value = []
+}
+
+const loadHistoryFromBackend = async () => {
+  try {
+    const response = await apiRequest('/history')
+    if (response.ok) {
+      history.value = await response.json()
+    }
+  } catch (err) {
+    console.error('Failed to load history:', err)
+  }
+}
+
+const addToHistory = async (url, name = '') => {
   const isLocal = url.startsWith('blob:')
   const displayName = name || url.split('/').pop().split('?')[0]
+  const format = getFormat(url)
   
-  const newItem = {
-    url,
-    name: displayName,
-    timestamp: Date.now(),
-    isLocal, // 标记是否为本地文件
-    sid: isLocal ? sessionId : null // 记录会话 ID
-  }
-  
-  // 移除重复项：如果是本地文件按名称匹配，否则按 URL 匹配
-  history.value = history.value.filter(item => {
-    if (isLocal && item.isLocal) {
-      return item.name !== displayName
+  if (isLoggedIn.value && !isLocal) {
+    try {
+      const response = await apiRequest('/history', {
+        method: 'POST',
+        body: JSON.stringify({
+          video_url: url,
+          video_name: displayName,
+          video_format: format
+        })
+      })
+      if (response.ok) {
+        await loadHistoryFromBackend()
+      }
+    } catch (err) {
+      console.error('Failed to save history:', err)
     }
-    return item.url !== url
-  })
-  
-  // Add to front
-  history.value.unshift(newItem)
-  // Limit to 10 items
-  if (history.value.length > 10) {
-    history.value = history.value.slice(0, 10)
+  } else {
+    const newItem = {
+      url,
+      name: displayName,
+      timestamp: Date.now(),
+      isLocal,
+      sid: isLocal ? sessionId : null
+    }
+    
+    history.value = history.value.filter(item => {
+      if (isLocal && item.isLocal) {
+        return item.name !== displayName
+      }
+      return item.url !== url
+    })
+    
+    history.value.unshift(newItem)
+    if (history.value.length > 10) {
+      history.value = history.value.slice(0, 10)
+    }
   }
-  
-  localStorage.setItem('video-history', JSON.stringify(history.value))
 }
 
-const clearHistory = () => {
-  history.value = []
-  localStorage.removeItem('video-history')
+const clearHistory = async () => {
+  if (isLoggedIn.value) {
+    try {
+      await apiRequest('/history', { method: 'DELETE' })
+      history.value = []
+    } catch (err) {
+      console.error('Failed to clear history:', err)
+    }
+  } else {
+    history.value = []
+  }
 }
 
-const removeHistoryItem = (index) => {
-  history.value.splice(index, 1)
-  localStorage.setItem('video-history', JSON.stringify(history.value))
+const removeHistoryItem = async (item, index) => {
+  if (isLoggedIn.value && item.id) {
+    try {
+      await apiRequest(`/history/${item.id}`, { method: 'DELETE' })
+      await loadHistoryFromBackend()
+    } catch (err) {
+      console.error('Failed to delete history:', err)
+    }
+  } else {
+    history.value.splice(index, 1)
+  }
 }
 
 const playHistoryItem = (item, index) => {
   if (item.isLocal) {
-    // 检查是否是当前会话的本地文件
     if (item.sid !== sessionId) {
       pendingReuploadIndex.value = index
       fileInput.value.click()
@@ -241,25 +432,26 @@ const playHistoryItem = (item, index) => {
     currentFormat.value = item.name.split('.').pop().toLowerCase()
     addToHistory(item.url, item.name)
   } else {
-    inputUrl.value = item.url
+    inputUrl.value = item.video_url || item.url
     loadUrlVideo()
   }
 }
 
 const formatTime = (timestamp) => {
+  if (!timestamp) return ''
+  const time = typeof timestamp === 'string' ? new Date(timestamp).getTime() : timestamp
   const now = Date.now()
-  const diff = now - timestamp
+  const diff = now - time
   if (diff < 60000) return '刚刚'
   if (diff < 3600000) return `${Math.floor(diff / 60000)}分钟前`
   if (diff < 86400000) return `${Math.floor(diff / 3600000)}小时前`
-  return new Date(timestamp).toLocaleDateString()
+  return new Date(time).toLocaleDateString()
 }
 
 const handleFileSelect = (e) => {
   const file = e.target.files[0]
   if (file) {
     if (pendingReuploadIndex.value !== -1) {
-      // 如果是通过点击失效记录触发的上传，则替换该记录
       playFile(file)
       pendingReuploadIndex.value = -1
     } else {
@@ -324,7 +516,6 @@ const handlePlayerError = (err) => {
   width: 100%;
 }
 
-/* Sidebar Styles */
 .sidebar {
   width: 300px;
   height: 100%;
@@ -338,6 +529,9 @@ const handlePlayerError = (err) => {
   .sidebar-header {
     padding: 24px;
     border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
 
     .logo-mini {
       display: flex;
@@ -354,6 +548,66 @@ const handlePlayerError = (err) => {
         font-size: 1.1rem;
         font-weight: 700;
         letter-spacing: -0.5px;
+      }
+    }
+
+    .user-area {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+
+      .username {
+        font-size: 0.9rem;
+        color: #a5b4fc;
+      }
+
+      .logout-btn {
+        width: 28px;
+        height: 28px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: transparent;
+        border: none;
+        color: #64748b;
+        border-radius: 4px;
+        cursor: pointer;
+        transition: all 0.2s;
+
+        &:hover {
+          color: #ef4444;
+          background: rgba(239, 68, 68, 0.1);
+        }
+
+        svg {
+          width: 16px;
+          height: 16px;
+        }
+      }
+    }
+
+    .login-btn {
+      width: 32px;
+      height: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(99, 102, 241, 0.1);
+      border: 1px solid rgba(99, 102, 241, 0.2);
+      border-radius: 8px;
+      color: #a5b4fc;
+      cursor: pointer;
+      transition: all 0.2s;
+
+      &:hover {
+        background: rgba(99, 102, 241, 0.2);
+        border-color: #6366f1;
+        color: #f8fafc;
+      }
+
+      svg {
+        width: 18px;
+        height: 18px;
       }
     }
   }
@@ -537,7 +791,6 @@ const handlePlayerError = (err) => {
   }
 }
 
-/* Main Content Styles */
 .main-content {
   flex: 1;
   display: flex;
@@ -769,7 +1022,6 @@ const handlePlayerError = (err) => {
   -webkit-backdrop-filter: blur(12px);
 }
 
-/* Modal styles */
 .modal-overlay {
   position: fixed;
   top: 0;
@@ -802,6 +1054,13 @@ const handlePlayerError = (err) => {
       margin: 0 auto 15px;
     }
 
+    .success-icon {
+      width: 48px;
+      height: 48px;
+      color: #10b981;
+      margin: 0 auto 15px;
+    }
+
     h3 {
       font-size: 1.25rem;
       margin: 0;
@@ -823,71 +1082,69 @@ const handlePlayerError = (err) => {
     border-radius: 10px;
     font-weight: 600;
     cursor: pointer;
+    transition: all 0.2s;
 
     &:hover {
       background: #4f46e5;
     }
+
+    &.primary {
+      margin-bottom: 12px;
+    }
+  }
+
+  &.auth-modal {
+    max-width: 350px;
   }
 }
 
-/* Responsive Styles */
-@media (max-width: 1024px) {
-  .sidebar {
-    width: 260px;
-  }
-  .main-content {
-    padding: 30px;
-  }
-}
+.auth-form {
+  .form-group {
+    margin-bottom: 16px;
+    text-align: left;
 
-@media (max-width: 768px) {
-  .app-layout {
-    flex-direction: column;
-    overflow-y: auto;
-    height: auto;
+    label {
+      display: block;
+      margin-bottom: 6px;
+      font-size: 0.9rem;
+      color: #94a3b8;
+    }
+
+    input {
+      width: 100%;
+      padding: 10px 12px;
+      background: rgba(15, 23, 42, 0.6);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 8px;
+      color: #f8fafc;
+      font-size: 0.9rem;
+      outline: none;
+      transition: all 0.2s;
+
+      &:focus {
+        border-color: #6366f1;
+        box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.1);
+      }
+    }
   }
-  .sidebar {
+
+  .auth-actions {
+    margin-top: 24px;
+  }
+
+  .mode-switch {
     width: 100%;
-    height: auto;
-    max-height: 250px;
-    border-right: none;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-    
-    .sidebar-header {
-      padding: 16px 20px;
-    }
-    .history-sidebar-content {
-      padding: 10px 0;
-    }
-  }
-  .main-content {
-    padding: 20px;
-    overflow-y: visible;
-  }
-}
+    background: transparent;
+    border: none;
+    color: #6366f1;
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    opacity: 0.8;
 
-@media (max-width: 640px) {
-  .top-controls {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 12px;
-
-    .upload-area-mini {
-      height: 44px;
-      justify-content: center;
+    &:hover {
+      opacity: 1;
     }
-  }
-  
-  .header {
-    margin-bottom: 20px;
-    .subtitle {
-      font-size: 0.8rem;
-    }
-  }
-
-  .url-area .input-wrapper {
-    height: 44px;
-    padding-left: 12px;
   }
 }
 </style>
