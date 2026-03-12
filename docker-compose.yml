@@ -1,9 +1,7 @@
-version: '3.8'
-
 services:
   postgres:
-    image: postgres:18-alpine
-    container_name: video-player-postgres
+    image: postgres:16-alpine
+    container_name: kimi-video-player-postgres
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
@@ -14,7 +12,7 @@ services:
       - postgres_data:/var/lib/postgresql/data
     restart: unless-stopped
     networks:
-      - video-player-network
+      - kimi-video-player-network
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 5s
@@ -25,7 +23,7 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    container_name: video-player-backend
+    container_name: kimi-video-player-backend
     environment:
       DATABASE_URL: postgresql://postgres:postgres@postgres/video_player
     ports:
@@ -35,22 +33,22 @@ services:
       postgres:
         condition: service_healthy
     networks:
-      - video-player-network
+      - kimi-video-player-network
 
   frontend:
     build:
       context: ./frontend
       dockerfile: Dockerfile
-    container_name: video-player-frontend
+    container_name: kimi-video-player-frontend
     ports:
       - "3000:80"
     restart: unless-stopped
     networks:
-      - video-player-network
+      - kimi-video-player-network
 
 volumes:
   postgres_data:
 
 networks:
-  video-player-network:
+  kimi-video-player-network:
     driver: bridge
