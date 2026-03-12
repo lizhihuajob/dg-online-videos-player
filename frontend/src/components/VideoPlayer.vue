@@ -13,7 +13,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onBeforeUnmount, watch } from 'vue'
+import { ref, onMounted, onBeforeUnmount, watch, nextTick } from 'vue'
 import Player from 'xgplayer'
 import HlsPlugin from 'xgplayer-hls'
 import FlvPlugin from 'xgplayer-flv'
@@ -27,15 +27,113 @@ const props = defineProps({
   format: {
     type: String,
     default: 'mp4'
+  },
+  hasPrev: {
+    type: Boolean,
+    default: false
+  },
+  hasNext: {
+    type: Boolean,
+    default: false
   }
 })
 
-const emit = defineEmits(['ready', 'error', 'timeupdate'])
+const emit = defineEmits(['ready', 'error', 'timeupdate', 'prev', 'next'])
 
 const videoContainer = ref(null)
 let player = null
 const error = ref(null)
 const loading = ref(true)
+
+const addCustomButtons = () => {
+  if (!player) return
+
+  const controls = player.root.querySelector('.xgplayer-controls')
+  if (!controls) return
+
+  const leftGroup = controls.querySelector('.xgplayer-left-grid')
+  if (!leftGroup) return
+
+  const playBtn = leftGroup.querySelector('.xgplayer-play')
+  if (!playBtn) return
+
+  const prevBtn = document.createElement('div')
+  prevBtn.className = `xgplayer-prev-btn ${!props.hasPrev ? 'disabled' : ''}`
+  prevBtn.innerHTML = `
+    <svg viewBox="0 0 24 24" fill="currentColor" width="20" height="20">
+      <path d="M6 6h2v12H6V6zm3.5 6l8.5 6V6l-8.5 6z"/>
+    </svg>
+  `
+  prevBtn.style.cssText = `
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    cursor: ${props.hasPrev ? 'pointer' : 'not-allowed'};
+    opacity: ${props.hasPrev ? 1 : 0.4};
+    color: #e2e8f0;
+    transition: all 0.2s ease;
+  `
+  prevBtn.addEventListener('click', (e) => {
+    e.stopPropagation()
+    if (props.hasPrev) {
+      emit('prev')
+    }
+  })
+  prevBtn.addEventListener('mouseenter', () => {
+    if (props.hasPrev) {
+      prevBtn.style.color = '#6366f1'
+      prevBtn.style.transform = 'scale(1.1)'
+    }
+  })
+  prevBtn.addEventListener('mouseleave', () => {
+    prevBtn.style.color = '#e2e8f0'
+    prevBtn.style.transform = 'scale(1)'
+  })
+
+  const nextBtn = document.createElement('div')
+  nextBtn.className = `xgplayer-next-btn ${!props.hasNext ? 'disabled' : ''}`
+  nextBtn.innerHTML = `
+    <svg viewBox="0 0 24 24" fill="currentColor" width="20" height="20">
+      <path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"/>
+    </svg>
+  `
+  nextBtn.style.cssText = `
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    cursor: ${props.hasNext ? 'pointer' : 'not-allowed'};
+    opacity: ${props.hasNext ? 1 : 0.4};
+    color: #e2e8f0;
+    transition: all 0.2s ease;
+  `
+  nextBtn.addEventListener('click', (e) => {
+    e.stopPropagation()
+    if (props.hasNext) {
+      emit('next')
+    }
+  })
+  nextBtn.addEventListener('mouseenter', () => {
+    if (props.hasNext) {
+      nextBtn.style.color = '#6366f1'
+      nextBtn.style.transform = 'scale(1.1)'
+    }
+  })
+  nextBtn.addEventListener('mouseleave', () => {
+    nextBtn.style.color = '#e2e8f0'
+    nextBtn.style.transform = 'scale(1)'
+  })
+
+  playBtn.parentNode.insertBefore(prevBtn, playBtn)
+  if (playBtn.nextSibling) {
+    playBtn.parentNode.insertBefore(nextBtn, playBtn.nextSibling)
+  } else {
+    playBtn.parentNode.appendChild(nextBtn)
+  }
+}
 
 const initPlayer = () => {
   if (!videoContainer.value || !props.url) return
@@ -107,6 +205,9 @@ const initPlayer = () => {
     player.on('ready', () => {
       loading.value = false
       emit('ready')
+      nextTick(() => {
+        addCustomButtons()
+      })
     })
 
     player.on('canplay', () => {
@@ -196,6 +297,32 @@ watch([() => props.url, () => props.format], () => {
 
     .xgplayer-time {
       color: #e2e8f0 !important;
+    }
+
+    .xgplayer-prev-btn,
+    .xgplayer-next-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 32px;
+      height: 32px;
+      color: #e2e8f0;
+      transition: all 0.2s ease;
+
+      svg {
+        width: 20px;
+        height: 20px;
+      }
+
+      &:hover:not(.disabled) {
+        color: #6366f1;
+        transform: scale(1.1);
+      }
+
+      &.disabled {
+        color: #64748b;
+        cursor: not-allowed;
+      }
     }
   }
 }
