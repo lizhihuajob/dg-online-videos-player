@@ -16,6 +16,7 @@
 import { ref, onMounted, onBeforeUnmount, watch } from 'vue'
 import Player from 'xgplayer'
 import HlsPlugin from 'xgplayer-hls'
+import FlvPlugin from 'xgplayer-flv'
 import 'xgplayer/dist/index.min.css'
 
 const props = defineProps({
@@ -50,8 +51,14 @@ const initPlayer = () => {
 
   try {
     const plugins = []
-    if (props.format === 'm3u8' || props.url.includes('.m3u8')) {
+    const isHls = props.format === 'm3u8' || props.url.includes('.m3u8') || props.url.includes('livetv')
+    const isRtmp = props.url.startsWith('rtmp://')
+    const isFlv = props.format === 'flv' || props.url.includes('.flv')
+
+    if (isHls) {
       plugins.push(HlsPlugin)
+    } else if (isRtmp || isFlv) {
+      plugins.push(FlvPlugin)
     }
 
     const config = {
@@ -59,7 +66,7 @@ const initPlayer = () => {
       url: props.url,
       width: '100%',
       height: '100%',
-      autoplay: true, // Auto play for better UX when clicking history or entering URL
+      autoplay: true,
       playsinline: true,
       'x5-video-player-type': 'h5',
       'x5-video-player-fullscreen': 'true',
@@ -77,6 +84,15 @@ const initPlayer = () => {
       miniProgressBar: true,
       controls: true,
       plugins: plugins
+    }
+
+    // RTMP 流特殊配置
+    if (isRtmp) {
+      config.flv = {
+        type: 'flv',
+        isLive: true,
+        url: props.url
+      }
     }
 
     player = new Player(config)
@@ -142,11 +158,13 @@ watch([() => props.url, () => props.format], () => {
 .video-player-container {
   width: 100%;
   height: 100%;
-  background: #000;
+  background: linear-gradient(145deg, #0a0a0a 0%, #1a1a2e 100%);
   position: relative;
   display: flex;
   justify-content: center;
   align-items: center;
+  border-radius: 16px;
+  overflow: hidden;
 }
 
 .video-wrapper {
@@ -160,10 +178,24 @@ watch([() => props.url, () => props.format], () => {
   :deep(.xgplayer) {
     width: 100% !important;
     height: 100% !important;
-    background: #000 !important;
+    background: transparent !important;
 
     video {
       object-fit: contain;
+    }
+
+    .xgplayer-controls {
+      background: linear-gradient(to top, rgba(0, 0, 0, 0.8), transparent) !important;
+    }
+
+    .xgplayer-progress {
+      .xgplayer-progress-played {
+        background: linear-gradient(90deg, #6366f1, #8b5cf6) !important;
+      }
+    }
+
+    .xgplayer-time {
+      color: #e2e8f0 !important;
     }
   }
 }
@@ -174,21 +206,25 @@ watch([() => props.url, () => props.format], () => {
   left: 0;
   width: 100%;
   height: 100%;
-  background: rgba(0, 0, 0, 0.8);
+  background: rgba(15, 23, 42, 0.95);
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  color: white;
+  color: #f8fafc;
   z-index: 10;
+  backdrop-filter: blur(8px);
 
   p {
     margin: 8px 0;
   }
 
   .error-detail {
-    font-size: 0.9rem;
+    font-size: 0.85rem;
     color: #fca5a5;
+    max-width: 80%;
+    text-align: center;
+    line-height: 1.5;
   }
 }
 
@@ -198,27 +234,30 @@ watch([() => props.url, () => props.format], () => {
   left: 0;
   width: 100%;
   height: 100%;
-  background: rgba(0, 0, 0, 0.6);
+  background: rgba(15, 23, 42, 0.85);
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  color: white;
+  color: #f8fafc;
   z-index: 5;
+  backdrop-filter: blur(4px);
 
   p {
-    margin-top: 15px;
+    margin-top: 16px;
     font-size: 0.9rem;
     color: #94a3b8;
+    letter-spacing: 0.5px;
   }
 
   .spinner {
-    width: 40px;
-    height: 40px;
-    border: 3px solid rgba(255, 255, 255, 0.1);
+    width: 44px;
+    height: 44px;
+    border: 3px solid rgba(99, 102, 241, 0.2);
     border-top-color: #6366f1;
     border-radius: 50%;
     animation: spin 1s linear infinite;
+    box-shadow: 0 0 20px rgba(99, 102, 241, 0.3);
   }
 }
 

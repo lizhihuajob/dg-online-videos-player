@@ -57,6 +57,21 @@ class PlayHistoryResponse(BaseModel):
     class Config:
         from_attributes = True
 
+class LocalPlayHistoryCreate(BaseModel):
+    video_name: str
+    video_format: str
+    file_info: str  # JSON string
+
+class LocalPlayHistoryResponse(BaseModel):
+    id: int
+    video_name: str
+    video_format: str
+    file_info: str
+    created_at: str
+
+    class Config:
+        from_attributes = True
+
 async def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(database.get_db)):
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
@@ -204,6 +219,95 @@ def clear_play_history(
     ).delete()
     db.commit()
     return {"message": "All history cleared successfully"}
+
+
+# Local Play History APIs
+@app.post("/local-history", response_model=LocalPlayHistoryResponse)
+def add_local_play_history(
+    history: LocalPlayHistoryCreate,
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(database.get_db)
+):
+    existing = db.query(models.LocalPlayHistory).filter(
+        models.LocalPlayHistory.user_id == current_user.id,
+        models.LocalPlayHistory.video_name == history.video_name
+    ).first()
+
+    if existing:
+        db.delete(existing)
+        db.commit()
+
+    new_history = models.LocalPlayHistory(
+        user_id=current_user.id,
+        video_name=history.video_name,
+        video_format=history.video_format,
+        file_info=history.file_info
+    )
+    db.add(new_history)
+    db.commit()
+    db.refresh(new_history)
+
+    response = LocalPlayHistoryResponse(
+        id=new_history.id,
+        video_name=new_history.video_name,
+        video_format=new_history.video_format,
+        file_info=new_history.file_info,
+        created_at=new_history.created_at.isoformat() if new_history.created_at else ""
+    )
+    return response
+
+
+@app.get("/local-history", response_model=List[LocalPlayHistoryResponse])
+def get_local_play_history(
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(database.get_db)
+):
+    history = db.query(models.LocalPlayHistory).filter(
+        models.LocalPlayHistory.user_id == current_user.id
+    ).order_by(models.LocalPlayHistory.created_at.desc()).limit(10).all()
+
+    response = []
+    for item in history:
+        response.append(LocalPlayHistoryResponse(
+            id=item.id,
+            video_name=item.video_name,
+            video_format=item.video_format,
+            file_info=item.file_info,
+            created_at=item.created_at.isoformat() if item.created_at else ""
+        ))
+    return response
+
+
+@app.delete("/local-history/{history_id}")
+def delete_local_play_history(
+    history_id: int,
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(database.get_db)
+):
+    history = db.query(models.LocalPlayHistory).filter(
+        models.LocalPlayHistory.id == history_id,
+        models.LocalPlayHistory.user_id == current_user.id
+    ).first()
+
+    if not history:
+        raise HTTPException(status_code=404, detail="History item not found")
+
+    db.delete(history)
+    db.commit()
+    return {"message": "Local history item deleted successfully"}
+
+
+@app.delete("/local-history")
+def clear_local_play_history(
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(database.get_db)
+):
+    db.query(models.LocalPlayHistory).filter(
+        models.LocalPlayHistory.user_id == current_user.id
+    ).delete()
+    db.commit()
+    return {"message": "All local history cleared successfully"}
+
 
 @app.get("/")
 def root():

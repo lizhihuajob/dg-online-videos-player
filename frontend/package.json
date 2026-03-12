@@ -14,6 +14,7 @@
     "vue": "^3.4.0",
     "vue-router": "^4.2.5",
     "xgplayer": "^3.0.15",
+    "xgplayer-flv": "^3.0.11",
     "xgplayer-hls": "^3.0.23"
   },
   "devDependencies": {

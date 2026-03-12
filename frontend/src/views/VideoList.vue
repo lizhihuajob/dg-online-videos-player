@@ -26,44 +26,118 @@
           </button>
         </div>
         
+        <!-- Add Video Button -->
+        <div class="add-video-section">
+          <button class="add-video-btn" @click="showAddVideoModal = true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"/>
+              <line x1="12" y1="8" x2="12" y2="16"/>
+              <line x1="8" y1="12" x2="16" y2="12"/>
+            </svg>
+            <span>添加视频</span>
+          </button>
+        </div>
+
         <div class="history-sidebar-content">
-          <div class="section-title">
-            <span>播放历史</span>
-            <button v-if="history.length > 0" class="clear-history" @click="clearHistory">清除</button>
-          </div>
-          
-          <div v-if="history.length === 0" class="empty-history">
-            <p>暂无播放记录</p>
-          </div>
-          
-          <div class="history-sidebar-list">
-            <div 
-              v-for="(item, index) in history" 
-              :key="item.id || index" 
-              class="history-sidebar-item"
-              :class="{ 'is-active': currentUrl === item.url, 'is-local': item.isLocal }"
-              @dblclick="playHistoryItem(item, index)"
-              title="双击播放"
-            >
-              <div class="item-info">
-                <div class="name-wrapper">
-                  <span v-if="item.isLocal" class="local-tag" :class="{ 'is-expired': item.sid !== sessionId }">
-                    {{ item.sid === sessionId ? '本地' : '已失效' }}
-                  </span>
-                  <span class="item-name">{{ item.video_name || item.name || item.url }}</span>
-                </div>
-                <span class="item-time">{{ formatTime(item.timestamp || item.created_at) }}</span>
+          <!-- 在线视频历史 -->
+          <div class="history-section">
+            <div class="section-header" @click="toggleOnlineHistory">
+              <div class="section-title-wrapper">
+                <svg class="section-icon" :class="{ 'collapsed': !isOnlineHistoryOpen }" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
+                  <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
+                </svg>
+                <span class="section-title-text">在线视频</span>
+                <span class="section-count" v-if="onlineHistory.length > 0">({{ onlineHistory.length }})</span>
               </div>
-              <div class="item-actions">
-                <button class="delete-item-btn" @click.stop="removeHistoryItem(item, index)" title="删除记录">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M18 6L6 18M6 6l12 12"/>
-                  </svg>
-                </button>
-                <div class="play-indicator">
-                  <svg viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M8 5v14l11-7z"/>
-                  </svg>
+              <button v-if="onlineHistory.length > 0 && isOnlineHistoryOpen" class="clear-history" @click.stop="clearOnlineHistory">清除</button>
+            </div>
+            
+            <div v-show="isOnlineHistoryOpen" class="history-list-wrapper">
+              <div v-if="onlineHistory.length === 0" class="empty-history">
+                <p>暂无在线播放记录</p>
+              </div>
+              
+              <div class="history-sidebar-list">
+                <div 
+                  v-for="(item, index) in onlineHistory" 
+                  :key="'online-' + item.id" 
+                  class="history-sidebar-item"
+                  :class="{ 'is-active': currentUrl === item.video_url }"
+                  @dblclick="playOnlineHistoryItem(item)"
+                  title="双击播放"
+                >
+                  <div class="item-info">
+                    <div class="name-wrapper">
+                      <span class="item-name">{{ item.video_name || item.video_url }}</span>
+                    </div>
+                    <span class="item-time">{{ formatTime(item.created_at) }}</span>
+                  </div>
+                  <div class="item-actions">
+                    <button class="delete-item-btn" @click.stop="removeOnlineHistoryItem(item)" title="删除记录">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M18 6L6 18M6 6l12 12"/>
+                      </svg>
+                    </button>
+                    <div class="play-indicator">
+                      <svg viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M8 5v14l11-7z"/>
+                      </svg>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 本地视频历史 -->
+          <div class="history-section">
+            <div class="section-header" @click="toggleLocalHistory">
+              <div class="section-title-wrapper">
+                <svg class="section-icon" :class="{ 'collapsed': !isLocalHistoryOpen }" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/>
+                </svg>
+                <span class="section-title-text">本地视频</span>
+                <span class="section-count" v-if="localHistory.length > 0">({{ localHistory.length }})</span>
+              </div>
+              <button v-if="localHistory.length > 0 && isLocalHistoryOpen" class="clear-history" @click.stop="clearLocalHistory">清除</button>
+            </div>
+            
+            <div v-show="isLocalHistoryOpen" class="history-list-wrapper">
+              <div v-if="localHistory.length === 0" class="empty-history">
+                <p>暂无本地播放记录</p>
+              </div>
+              
+              <div class="history-sidebar-list">
+                <div 
+                  v-for="(item, index) in localHistory" 
+                  :key="'local-' + (item.id || index)" 
+                  class="history-sidebar-item is-local"
+                  :class="{ 'is-active': currentUrl === item.url, 'is-expired': item.sid !== sessionId }"
+                  @dblclick="playLocalHistoryItem(item, index)"
+                  title="双击播放"
+                >
+                  <div class="item-info">
+                    <div class="name-wrapper">
+                      <span class="local-tag" :class="{ 'is-expired': item.sid !== sessionId }">
+                        {{ item.sid === sessionId ? '本地' : '需重新上传' }}
+                      </span>
+                      <span class="item-name">{{ item.video_name || item.name }}</span>
+                    </div>
+                    <span class="item-time">{{ formatTime(item.timestamp || item.created_at) }}</span>
+                  </div>
+                  <div class="item-actions">
+                    <button class="delete-item-btn" @click.stop="removeLocalHistoryItem(item, index)" title="删除记录">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M18 6L6 18M6 6l12 12"/>
+                      </svg>
+                    </button>
+                    <div class="play-indicator">
+                      <svg viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M8 5v14l11-7z"/>
+                      </svg>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -71,64 +145,12 @@
         </div>
         
         <div class="sidebar-footer">
-          <p>双击记录即可播放</p>
+          <p>双击播放，本地视频需重新选择文件</p>
         </div>
       </aside>
 
       <!-- Right Main Content -->
       <div class="main-content">
-        <!-- Header -->
-        <header class="header">
-          <p class="subtitle">极简、强大的网页视频播放解决方案</p>
-        </header>
-
-        <!-- Top Controls Section -->
-        <section class="top-controls-wrapper">
-          <div class="top-controls">
-            <!-- URL Input (Green Box Position) -->
-            <div class="url-area">
-              <div class="input-wrapper">
-                <svg class="input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
-                  <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
-                </svg>
-                <input 
-                  type="text" 
-                  v-model="inputUrl" 
-                  placeholder="输入在线视频地址 (MP4, M3U8...)"
-                  @keyup.enter="loadUrlVideo"
-                >
-                <div class="button-group">
-                  <button v-if="inputUrl" class="action-btn clear-btn" @click="inputUrl = ''" title="清空">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-                      <path d="M18 6L6 18M6 6l12 12"/>
-                    </svg>
-                  </button>
-                  <button class="action-btn play-btn" @click="loadUrlVideo" title="播放">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-                      <path d="M5 12h14M12 5l7 7-7 7"/>
-                    </svg>
-                  </button>
-                  <button class="action-btn reset-btn" @click="resetUrl" title="重置默认">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-                      <path d="M23 4v6h-6M1 20v-6h6M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
-                    </svg>
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            <!-- Local Upload (Red Box Position) -->
-            <div class="upload-area-mini" @click="fileInput.click()">
-              <input type="file" ref="fileInput" @change="handleFileSelect" accept="video/*" hidden>
-              <svg class="control-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/>
-              </svg>
-              <span>上传本地视频</span>
-            </div>
-          </div>
-        </section>
-
         <!-- Main Player Section -->
         <main class="player-section">
           <div 
@@ -138,7 +160,7 @@
             @drop.prevent="handleDrop"
             :class="{ 'drag-active': dragOver }"
           >
-            <div v-if="!currentUrl" class="placeholder" @click="fileInput.click()">
+            <div v-if="!currentUrl" class="placeholder" @click="showAddVideoModal = true">
               <svg class="placeholder-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2">
                 <path d="M20.2 6H3.8C2.8 6 2 6.8 2 7.8V16.2C2 17.2 2.8 18 3.8 18H20.2C21.2 18 22 17.2 22 16.2V7.8C22 6.8 21.2 6 20.2 6Z" />
                 <path d="M2 11H22" />
@@ -146,7 +168,7 @@
                 <path d="M12 6L15 11" />
                 <path d="M17 6L20 11" />
               </svg>
-              <p>拖拽视频文件到此处或从上方添加</p>
+              <p>点击添加视频或拖拽视频文件到此处</p>
             </div>
             <VideoPlayer 
               v-else 
@@ -156,11 +178,6 @@
             />
           </div>
         </main>
-
-        <!-- Footer -->
-        <footer class="footer">
-          <p>© 2024 Vision Player. Supports MP4, WebM, and HLS (M3U8).</p>
-        </footer>
       </div>
     </div>
 
@@ -221,6 +238,117 @@
         <button class="modal-btn" @click="showSuccess = false">确定</button>
       </div>
     </div>
+
+    <!-- Add Video Modal -->
+    <div v-if="showAddVideoModal" class="modal-overlay" @click="showAddVideoModal = false">
+      <div class="modal-card glass add-video-modal" @click.stop>
+        <div class="modal-header">
+          <svg class="video-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="2" y="2" width="20" height="20" rx="2.18" ry="2.18"/>
+            <line x1="7" y1="2" x2="7" y2="22"/>
+            <line x1="17" y1="2" x2="17" y2="22"/>
+            <line x1="2" y1="12" x2="22" y2="12"/>
+            <line x1="2" y1="7" x2="7" y2="7"/>
+            <line x1="2" y1="17" x2="7" y2="17"/>
+            <line x1="17" y1="17" x2="22" y2="17"/>
+            <line x1="17" y1="7" x2="22" y2="7"/>
+          </svg>
+          <h3>添加视频</h3>
+        </div>
+        
+        <!-- Tab Switch -->
+        <div class="video-type-tabs">
+          <button 
+            class="tab-btn" 
+            :class="{ active: videoType === 'online' }"
+            @click="videoType = 'online'"
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
+              <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
+            </svg>
+            在线视频
+          </button>
+          <button 
+            class="tab-btn" 
+            :class="{ active: videoType === 'local' }"
+            @click="videoType = 'local'"
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/>
+            </svg>
+            本地视频
+          </button>
+        </div>
+
+        <div class="add-video-form">
+          <!-- Online Video Form -->
+          <template v-if="videoType === 'online'">
+            <div class="form-group">
+              <label>视频地址</label>
+              <input 
+                type="text" 
+                v-model="newVideoUrl" 
+                placeholder="输入在线视频地址 (MP4, M3U8, RTMP...)"
+                @keyup.enter="addVideoAndPlay"
+              >
+            </div>
+            <div class="form-group">
+              <label>视频名称（可选）</label>
+              <input 
+                type="text" 
+                v-model="newVideoName" 
+                placeholder="输入视频名称"
+                @keyup.enter="addVideoAndPlay"
+              >
+            </div>
+          </template>
+
+          <!-- Local Video Form -->
+          <template v-else>
+            <div class="local-video-upload">
+              <input 
+                type="file" 
+                ref="fileInput" 
+                @change="handleModalFileSelect" 
+                accept="video/*" 
+                hidden
+              >
+              <div class="upload-area" @click="fileInput.click()">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                  <polyline points="17 8 12 3 7 8"/>
+                  <line x1="12" y1="3" x2="12" y2="15"/>
+                </svg>
+                <p>点击选择本地视频文件</p>
+                <span class="upload-hint">支持 MP4, WebM 等格式</span>
+              </div>
+              <div v-if="selectedLocalFile" class="selected-file">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                  <polyline points="14 2 14 8 20 8"/>
+                  <line x1="16" y1="13" x2="8" y2="13"/>
+                  <line x1="16" y1="17" x2="8" y2="17"/>
+                  <polyline points="10 9 9 9 8 9"/>
+                </svg>
+                <span class="file-name">{{ selectedLocalFile.name }}</span>
+                <button class="clear-file" @click="selectedLocalFile = null">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="18" y1="6" x2="6" y2="18"/>
+                    <line x1="6" y1="6" x2="18" y2="18"/>
+                  </svg>
+                </button>
+              </div>
+            </div>
+          </template>
+
+          <div class="add-video-actions">
+            <button class="modal-btn secondary" @click="closeAddVideoModal">取消</button>
+            <button class="modal-btn primary" @click="addVideoAndPlay">确定</button>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -238,10 +366,15 @@ const showError = ref(false)
 const errorMessage = ref('')
 const showSuccess = ref(false)
 const successMessage = ref('')
-const history = ref([])
+const onlineHistory = ref([])
+const localHistory = ref([])
 const sessionId = Math.random().toString(36).substring(7)
 const pendingReuploadIndex = ref(-1)
 const fileInput = ref(null)
+
+// 折叠状态
+const isOnlineHistoryOpen = ref(true)
+const isLocalHistoryOpen = ref(true)
 
 const showAuthModal = ref(false)
 const isLoginMode = ref(true)
@@ -252,6 +385,14 @@ const authForm = ref({
 })
 const currentUser = ref(null)
 const accessToken = ref(null)
+
+// Add video modal
+const showAddVideoModal = ref(false)
+const videoType = ref('online') // 'online' or 'local'
+const DEFAULT_VIDEO_URL = 'https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8'
+const newVideoUrl = ref(DEFAULT_VIDEO_URL)
+const newVideoName = ref('')
+const selectedLocalFile = ref(null)
 
 const isLoggedIn = computed(() => !!currentUser.value)
 
@@ -337,104 +478,206 @@ const logout = () => {
   accessToken.value = null
   localStorage.removeItem('access_token')
   localStorage.removeItem('current_user')
-  history.value = []
+  onlineHistory.value = []
+  localHistory.value = []
 }
 
-const loadHistoryFromBackend = async () => {
+const loadOnlineHistoryFromBackend = async () => {
+  if (!isLoggedIn.value) return
   try {
     const response = await apiRequest('/history')
     if (response.ok) {
-      history.value = await response.json()
+      onlineHistory.value = await response.json()
     }
   } catch (err) {
-    console.error('Failed to load history:', err)
+    console.error('Failed to load online history:', err)
   }
 }
 
-const addToHistory = async (url, name = '') => {
+const loadLocalHistoryFromBackend = async () => {
+  if (!isLoggedIn.value) return
+  try {
+    const response = await apiRequest('/local-history')
+    if (response.ok) {
+      const backendLocalHistory = await response.json()
+      // 合并后端本地历史与当前本地历史
+      const currentLocalUrls = new Set(localHistory.value.map(item => item.url))
+      backendLocalHistory.forEach(item => {
+        if (!currentLocalUrls.has(item.url)) {
+          localHistory.value.push({
+            id: item.id,
+            name: item.video_name,
+            video_name: item.video_name,
+            url: '', // 本地视频需要重新上传
+            timestamp: new Date(item.created_at).getTime(),
+            isLocal: true,
+            sid: null, // 需要重新上传
+            fileInfo: JSON.parse(item.file_info || '{}')
+          })
+        }
+      })
+      // 限制数量
+      if (localHistory.value.length > 10) {
+        localHistory.value = localHistory.value.slice(0, 10)
+      }
+    }
+  } catch (err) {
+    console.error('Failed to load local history:', err)
+  }
+}
+
+const loadHistoryFromBackend = async () => {
+  await loadOnlineHistoryFromBackend()
+  await loadLocalHistoryFromBackend()
+}
+
+// 折叠/展开切换
+const toggleOnlineHistory = () => {
+  isOnlineHistoryOpen.value = !isOnlineHistoryOpen.value
+}
+
+const toggleLocalHistory = () => {
+  isLocalHistoryOpen.value = !isLocalHistoryOpen.value
+}
+
+const addToHistory = async (url, name = '', fileInfo = null) => {
   const isLocal = url.startsWith('blob:')
   const displayName = name || url.split('/').pop().split('?')[0]
   const format = getFormat(url)
-  
-  if (isLoggedIn.value && !isLocal) {
-    try {
-      const response = await apiRequest('/history', {
-        method: 'POST',
-        body: JSON.stringify({
-          video_url: url,
-          video_name: displayName,
-          video_format: format
-        })
-      })
-      if (response.ok) {
-        await loadHistoryFromBackend()
-      }
-    } catch (err) {
-      console.error('Failed to save history:', err)
-    }
-  } else {
+
+  if (isLocal) {
+    // 本地视频历史
     const newItem = {
       url,
       name: displayName,
+      video_name: displayName,
       timestamp: Date.now(),
-      isLocal,
-      sid: isLocal ? sessionId : null
+      isLocal: true,
+      sid: sessionId,
+      fileInfo: fileInfo ? {
+        name: fileInfo.name,
+        size: fileInfo.size,
+        type: fileInfo.type,
+        lastModified: fileInfo.lastModified
+      } : null
     }
-    
-    history.value = history.value.filter(item => {
-      if (isLocal && item.isLocal) {
-        return item.name !== displayName
+
+    // 去重：移除同名本地视频
+    localHistory.value = localHistory.value.filter(item => item.name !== displayName)
+    localHistory.value.unshift(newItem)
+    if (localHistory.value.length > 10) {
+      localHistory.value = localHistory.value.slice(0, 10)
+    }
+
+    // 如果已登录，同步到后端
+    if (isLoggedIn.value) {
+      try {
+        await apiRequest('/local-history', {
+          method: 'POST',
+          body: JSON.stringify({
+            video_name: displayName,
+            video_format: format,
+            file_info: JSON.stringify(newItem.fileInfo)
+          })
+        })
+      } catch (err) {
+        console.error('Failed to save local history to backend:', err)
       }
-      return item.url !== url
-    })
-    
-    history.value.unshift(newItem)
-    if (history.value.length > 10) {
-      history.value = history.value.slice(0, 10)
+    }
+  } else {
+    // 在线视频历史
+    if (isLoggedIn.value) {
+      try {
+        const response = await apiRequest('/history', {
+          method: 'POST',
+          body: JSON.stringify({
+            video_url: url,
+            video_name: displayName,
+            video_format: format
+          })
+        })
+        if (response.ok) {
+          await loadOnlineHistoryFromBackend()
+        }
+      } catch (err) {
+        console.error('Failed to save online history:', err)
+      }
     }
   }
 }
 
-const clearHistory = async () => {
+// 在线视频历史操作
+const clearOnlineHistory = async () => {
   if (isLoggedIn.value) {
     try {
       await apiRequest('/history', { method: 'DELETE' })
-      history.value = []
+      onlineHistory.value = []
     } catch (err) {
-      console.error('Failed to clear history:', err)
+      console.error('Failed to clear online history:', err)
     }
   } else {
-    history.value = []
+    onlineHistory.value = []
   }
 }
 
-const removeHistoryItem = async (item, index) => {
+const removeOnlineHistoryItem = async (item) => {
   if (isLoggedIn.value && item.id) {
     try {
       await apiRequest(`/history/${item.id}`, { method: 'DELETE' })
-      await loadHistoryFromBackend()
+      await loadOnlineHistoryFromBackend()
     } catch (err) {
-      console.error('Failed to delete history:', err)
+      console.error('Failed to delete online history:', err)
     }
   } else {
-    history.value.splice(index, 1)
+    const index = onlineHistory.value.findIndex(h => h.video_url === item.video_url)
+    if (index > -1) {
+      onlineHistory.value.splice(index, 1)
+    }
   }
 }
 
-const playHistoryItem = (item, index) => {
-  if (item.isLocal) {
-    if (item.sid !== sessionId) {
-      pendingReuploadIndex.value = index
-      fileInput.value.click()
-      return
+const playOnlineHistoryItem = (item) => {
+  inputUrl.value = item.video_url
+  loadUrlVideo()
+}
+
+// 本地视频历史操作
+const clearLocalHistory = async () => {
+  if (isLoggedIn.value) {
+    try {
+      await apiRequest('/local-history', { method: 'DELETE' })
+      localHistory.value = []
+    } catch (err) {
+      console.error('Failed to clear local history:', err)
     }
-    currentUrl.value = item.url
-    currentFormat.value = item.name.split('.').pop().toLowerCase()
-    addToHistory(item.url, item.name)
   } else {
-    inputUrl.value = item.video_url || item.url
-    loadUrlVideo()
+    localHistory.value = []
   }
+}
+
+const removeLocalHistoryItem = async (item, index) => {
+  if (isLoggedIn.value && item.id) {
+    try {
+      await apiRequest(`/local-history/${item.id}`, { method: 'DELETE' })
+      // 从本地数组中移除
+      localHistory.value.splice(index, 1)
+    } catch (err) {
+      console.error('Failed to delete local history:', err)
+    }
+  } else {
+    localHistory.value.splice(index, 1)
+  }
+}
+
+const playLocalHistoryItem = (item, index) => {
+  if (item.sid !== sessionId) {
+    pendingReuploadIndex.value = index
+    fileInput.value.click()
+    return
+  }
+  currentUrl.value = item.url
+  currentFormat.value = item.name.split('.').pop().toLowerCase()
+  addToHistory(item.url, item.name)
 }
 
 const formatTime = (timestamp) => {
@@ -452,7 +695,9 @@ const handleFileSelect = (e) => {
   const file = e.target.files[0]
   if (file) {
     if (pendingReuploadIndex.value !== -1) {
-      playFile(file)
+      // 从历史记录重新上传，传入对应的历史记录项进行验证
+      const historyItem = localHistory.value[pendingReuploadIndex.value]
+      playFile(file, historyItem)
       pendingReuploadIndex.value = -1
     } else {
       playFile(file)
@@ -468,11 +713,33 @@ const handleDrop = (e) => {
   }
 }
 
-const playFile = (file) => {
+const playFile = (file, historyItem = null) => {
+  // 如果提供了历史记录项，验证文件是否匹配
+  if (historyItem && historyItem.fileInfo) {
+    const info = historyItem.fileInfo
+    const isMatch = file.name === info.name &&
+                    file.size === info.size &&
+                    file.lastModified === info.lastModified
+
+    if (!isMatch) {
+      showError.value = true
+      errorMessage.value = '文件不匹配！请选择正确的视频文件。'
+      return
+    }
+  }
+
   const url = URL.createObjectURL(file)
   currentUrl.value = url
   currentFormat.value = file.name.split('.').pop().toLowerCase()
-  addToHistory(url, file.name)
+
+  // 如果是从历史记录重新上传，更新原记录的 URL
+  if (historyItem) {
+    historyItem.url = url
+    historyItem.sid = sessionId
+    addToHistory(url, file.name, file)
+  } else {
+    addToHistory(url, file.name, file)
+  }
 }
 
 const loadUrlVideo = () => {
@@ -487,9 +754,12 @@ const resetUrl = () => {
 }
 
 const getFormat = (url) => {
+  if (url.startsWith('rtmp://')) {
+    return 'rtmp'
+  }
   const cleanUrl = url.split('?')[0].split('#')[0]
   const ext = cleanUrl.split('.').pop().toLowerCase()
-  return ['mp4', 'webm', 'm3u8'].includes(ext) ? ext : 'mp4'
+  return ['mp4', 'webm', 'm3u8', 'flv'].includes(ext) ? ext : 'mp4'
 }
 
 const handlePlayerError = (err) => {
@@ -500,12 +770,61 @@ const handlePlayerError = (err) => {
   }
   showError.value = true
 }
+
+const addVideoAndPlay = () => {
+  if (videoType.value === 'online') {
+    // 在线视频
+    if (!newVideoUrl.value.trim()) {
+      errorMessage.value = '请输入视频地址'
+      showError.value = true
+      return
+    }
+
+    // 设置当前URL并播放
+    currentUrl.value = newVideoUrl.value.trim()
+    currentFormat.value = getFormat(currentUrl.value)
+
+    // 添加到历史记录
+    addToHistory(currentUrl.value, newVideoName.value.trim() || '')
+  } else {
+    // 本地视频
+    if (!selectedLocalFile.value) {
+      errorMessage.value = '请选择本地视频文件'
+      showError.value = true
+      return
+    }
+
+    // 播放本地文件，传入文件信息用于后续验证
+    const url = URL.createObjectURL(selectedLocalFile.value)
+    currentUrl.value = url
+    currentFormat.value = selectedLocalFile.value.name.split('.').pop().toLowerCase()
+    addToHistory(url, selectedLocalFile.value.name, selectedLocalFile.value)
+  }
+
+  // 关闭弹窗并清空输入
+  closeAddVideoModal()
+}
+
+const closeAddVideoModal = () => {
+  showAddVideoModal.value = false
+  newVideoUrl.value = DEFAULT_VIDEO_URL
+  newVideoName.value = ''
+  selectedLocalFile.value = null
+  videoType.value = 'online'
+}
+
+const handleModalFileSelect = (e) => {
+  const file = e.target.files[0]
+  if (file) {
+    selectedLocalFile.value = file
+  }
+}
 </script>
 
 <style lang="scss" scoped>
 .main-container {
   min-height: 100vh;
-  background: radial-gradient(circle at top center, #1e293b 0%, #080c14 100%);
+  background: radial-gradient(ellipse at 20% 0%, #1e1b4b 0%, #0f172a 40%, #020617 100%);
   color: #f8fafc;
   overflow: hidden;
 }
@@ -517,18 +836,18 @@ const handlePlayerError = (err) => {
 }
 
 .sidebar {
-  width: 300px;
+  width: 280px;
   height: 100%;
   display: flex;
   flex-direction: column;
-  background: rgba(15, 23, 42, 0.4);
-  border-right: 1px solid rgba(255, 255, 255, 0.05);
+  background: rgba(15, 23, 42, 0.6);
+  border-right: 1px solid rgba(99, 102, 241, 0.1);
   transition: all 0.3s ease;
   flex-shrink: 0;
 
   .sidebar-header {
-    padding: 24px;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    padding: 20px 20px 16px;
+    border-bottom: 1px solid rgba(99, 102, 241, 0.1);
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -539,15 +858,20 @@ const handlePlayerError = (err) => {
       gap: 10px;
       
       .logo-icon {
-        width: 24px;
-        height: 24px;
+        width: 28px;
+        height: 28px;
         color: #6366f1;
+        filter: drop-shadow(0 0 8px rgba(99, 102, 241, 0.4));
       }
 
       span {
         font-size: 1.1rem;
         font-weight: 700;
         letter-spacing: -0.5px;
+        background: linear-gradient(135deg, #f8fafc 0%, #a5b4fc 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
       }
     }
 
@@ -615,46 +939,89 @@ const handlePlayerError = (err) => {
   .history-sidebar-content {
     flex: 1;
     overflow-y: auto;
-    padding: 20px 0;
+    padding: 8px 0;
 
     &::-webkit-scrollbar {
       width: 4px;
     }
+    &::-webkit-scrollbar-track {
+      background: transparent;
+    }
     &::-webkit-scrollbar-thumb {
-      background: rgba(255, 255, 255, 0.1);
+      background: rgba(99, 102, 241, 0.2);
       border-radius: 2px;
     }
 
-    .section-title {
-      padding: 0 24px 15px;
+    .history-section {
+      margin-bottom: 8px;
+    }
+
+    .section-header {
+      padding: 12px 20px;
       display: flex;
       justify-content: space-between;
       align-items: center;
+      cursor: pointer;
+      transition: all 0.2s;
+      border-radius: 0 8px 8px 0;
+      margin: 0 8px;
 
-      span {
-        font-size: 0.8rem;
-        font-weight: 600;
-        color: #64748b;
-        text-transform: uppercase;
-        letter-spacing: 1px;
+      &:hover {
+        background: rgba(99, 102, 241, 0.08);
+      }
+
+      .section-title-wrapper {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+
+        .section-icon {
+          width: 16px;
+          height: 16px;
+          color: #64748b;
+          transition: transform 0.2s;
+
+          &.collapsed {
+            transform: rotate(-90deg);
+          }
+        }
+
+        .section-title-text {
+          font-size: 0.8rem;
+          font-weight: 600;
+          color: #94a3b8;
+        }
+
+        .section-count {
+          font-size: 0.7rem;
+          color: #64748b;
+        }
       }
 
       .clear-history {
         background: transparent;
         border: none;
         color: #6366f1;
-        font-size: 0.75rem;
+        font-size: 0.7rem;
         cursor: pointer;
         opacity: 0.7;
-        &:hover { opacity: 1; }
+        transition: all 0.2s;
+        &:hover { 
+          opacity: 1; 
+          color: #818cf8;
+        }
       }
     }
 
+    .history-list-wrapper {
+      padding: 4px 0;
+    }
+
     .empty-history {
-      padding: 40px 24px;
+      padding: 20px;
       text-align: center;
       color: #475569;
-      font-size: 0.9rem;
+      font-size: 0.8rem;
     }
 
     .history-sidebar-list {
@@ -663,21 +1030,23 @@ const handlePlayerError = (err) => {
     }
 
     .history-sidebar-item {
-      padding: 12px 24px;
+      padding: 10px 20px;
       display: flex;
       align-items: center;
       justify-content: space-between;
       cursor: pointer;
-      transition: all 0.2s;
+      transition: all 0.25s ease;
       border-left: 3px solid transparent;
+      margin: 0 8px;
+      border-radius: 0 10px 10px 0;
 
       &:hover {
-        background: rgba(255, 255, 255, 0.03);
+        background: rgba(99, 102, 241, 0.08);
         .play-indicator { opacity: 1; }
       }
 
       &.is-active {
-        background: rgba(99, 102, 241, 0.05);
+        background: linear-gradient(90deg, rgba(99, 102, 241, 0.15) 0%, rgba(99, 102, 241, 0.05) 100%);
         border-left-color: #6366f1;
         .item-name { color: #f8fafc; }
       }
@@ -789,37 +1158,64 @@ const handlePlayerError = (err) => {
       text-align: center;
     }
   }
+
+  .add-video-section {
+    padding: 16px 20px;
+    border-bottom: 1px solid rgba(99, 102, 241, 0.1);
+
+    .add-video-btn {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 12px 16px;
+      background: linear-gradient(135deg, rgba(99, 102, 241, 0.2) 0%, rgba(139, 92, 246, 0.15) 100%);
+      border: 1px solid rgba(99, 102, 241, 0.3);
+      border-radius: 12px;
+      color: #c7d2fe;
+      font-size: 0.9rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.3s ease;
+
+      &:hover {
+        background: linear-gradient(135deg, rgba(99, 102, 241, 0.3) 0%, rgba(139, 92, 246, 0.25) 100%);
+        border-color: rgba(99, 102, 241, 0.5);
+        color: #f8fafc;
+        transform: translateY(-1px);
+        box-shadow: 0 4px 15px -3px rgba(99, 102, 241, 0.3);
+      }
+
+      &:active {
+        transform: translateY(0);
+      }
+
+      svg {
+        width: 20px;
+        height: 20px;
+      }
+    }
+  }
 }
 
 .main-content {
   flex: 1;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  padding: 40px 60px;
-  overflow-y: auto;
-}
-
-.header {
-  text-align: center;
-  margin-bottom: 30px;
-
-  .subtitle {
-    font-size: 0.9rem;
-    color: #64748b;
-    font-weight: 300;
-  }
+  padding: 24px;
+  overflow: hidden;
 }
 
 .top-controls-wrapper {
   width: 100%;
-  max-width: 1000px;
-  margin-bottom: 24px;
+  max-width: 900px;
+  margin-bottom: 20px;
 }
 
 .top-controls {
   display: flex;
-  gap: 16px;
+  gap: 12px;
   align-items: center;
   width: 100%;
 
@@ -831,21 +1227,23 @@ const handlePlayerError = (err) => {
     display: flex;
     align-items: center;
     gap: 8px;
-    padding: 0 20px;
-    height: 50px;
-    background: rgba(99, 102, 241, 0.1);
-    border: 1px solid rgba(99, 102, 241, 0.2);
+    padding: 0 18px;
+    height: 48px;
+    background: linear-gradient(135deg, rgba(99, 102, 241, 0.15) 0%, rgba(139, 92, 246, 0.1) 100%);
+    border: 1px solid rgba(99, 102, 241, 0.25);
     border-radius: 12px;
     cursor: pointer;
-    transition: all 0.3s;
-    color: #a5b4fc;
+    transition: all 0.3s ease;
+    color: #c7d2fe;
     white-space: nowrap;
+    box-shadow: 0 4px 15px -3px rgba(99, 102, 241, 0.2);
 
     &:hover {
-      background: rgba(99, 102, 241, 0.2);
-      border-color: #6366f1;
+      background: linear-gradient(135deg, rgba(99, 102, 241, 0.25) 0%, rgba(139, 92, 246, 0.2) 100%);
+      border-color: rgba(99, 102, 241, 0.5);
       color: #f8fafc;
-      transform: translateY(-1px);
+      transform: translateY(-2px);
+      box-shadow: 0 8px 25px -5px rgba(99, 102, 241, 0.35);
     }
 
     .control-icon {
@@ -854,7 +1252,7 @@ const handlePlayerError = (err) => {
     }
 
     span {
-      font-size: 0.9rem;
+      font-size: 0.85rem;
       font-weight: 500;
     }
   }
@@ -862,24 +1260,30 @@ const handlePlayerError = (err) => {
 
 .player-section {
   width: 100%;
-  max-width: 1000px;
-  margin-bottom: 30px;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 
   .player-card {
     position: relative;
     width: 100%;
-    aspect-ratio: 16 / 9;
-    background: #000;
-    border-radius: 20px;
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    box-shadow: 0 20px 50px -12px rgba(0, 0, 0, 0.8);
+    height: 100%;
+    background: linear-gradient(145deg, #0f172a 0%, #1e293b 100%);
+    border-radius: 16px;
+    border: 1px solid rgba(99, 102, 241, 0.15);
+    box-shadow: 
+      0 25px 50px -12px rgba(0, 0, 0, 0.7),
+      0 0 0 1px rgba(255, 255, 255, 0.02) inset;
     overflow: hidden;
     transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 
     &.drag-active {
-      border-color: #6366f1;
+      border-color: rgba(99, 102, 241, 0.6);
       transform: scale(1.005);
-      box-shadow: 0 0 40px rgba(99, 102, 241, 0.2);
+      box-shadow: 
+        0 0 60px rgba(99, 102, 241, 0.25),
+        0 25px 50px -12px rgba(0, 0, 0, 0.7);
     }
   }
 
@@ -891,24 +1295,32 @@ const handlePlayerError = (err) => {
     align-items: center;
     justify-content: center;
     cursor: pointer;
-    color: #334155;
-    transition: all 0.3s;
+    color: #475569;
+    transition: all 0.3s ease;
+    background: radial-gradient(circle at center, rgba(99, 102, 241, 0.05) 0%, transparent 70%);
 
     &:hover {
-      color: #64748b;
-      background: rgba(255, 255, 255, 0.01);
+      color: #94a3b8;
+      background: radial-gradient(circle at center, rgba(99, 102, 241, 0.1) 0%, transparent 70%);
     }
 
     .placeholder-icon {
-      width: 60px;
-      height: 60px;
-      margin-bottom: 16px;
-      opacity: 0.4;
+      width: 64px;
+      height: 64px;
+      margin-bottom: 20px;
+      opacity: 0.5;
+      transition: all 0.3s ease;
+    }
+
+    &:hover .placeholder-icon {
+      opacity: 0.7;
+      transform: scale(1.05);
     }
 
     p {
-      font-size: 0.95rem;
+      font-size: 1rem;
       letter-spacing: 0.5px;
+      color: #64748b;
     }
   }
 }
@@ -918,24 +1330,25 @@ const handlePlayerError = (err) => {
     position: relative;
     display: flex;
     align-items: center;
-    background: rgba(15, 23, 42, 0.6);
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: rgba(15, 23, 42, 0.7);
+    border: 1px solid rgba(99, 102, 241, 0.15);
     border-radius: 12px;
     padding: 4px 4px 4px 16px;
-    height: 50px;
-    transition: all 0.3s;
+    height: 48px;
+    transition: all 0.3s ease;
 
     &:focus-within {
-      border-color: #6366f1;
-      background: rgba(15, 23, 42, 0.8);
-      box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.1);
+      border-color: rgba(99, 102, 241, 0.5);
+      background: rgba(15, 23, 42, 0.9);
+      box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1), 0 4px 20px -4px rgba(99, 102, 241, 0.2);
     }
 
     .input-icon {
       width: 18px;
       height: 18px;
-      color: #475569;
+      color: #6366f1;
       margin-right: 12px;
+      opacity: 0.7;
     }
 
     input {
@@ -949,6 +1362,11 @@ const handlePlayerError = (err) => {
 
       &::placeholder {
         color: #475569;
+        transition: color 0.2s;
+      }
+
+      &:focus::placeholder {
+        color: #64748b;
       }
     }
   }
@@ -965,10 +1383,10 @@ const handlePlayerError = (err) => {
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 8px;
+  border-radius: 10px;
   border: none;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all 0.2s ease;
 
   svg {
     width: 18px;
@@ -976,18 +1394,24 @@ const handlePlayerError = (err) => {
   }
 
   &.play-btn {
-    background: #6366f1;
+    background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
     color: white;
+    box-shadow: 0 4px 15px -3px rgba(99, 102, 241, 0.4);
 
     &:hover {
-      background: #4f46e5;
-      transform: scale(1.05);
+      background: linear-gradient(135deg, #4f46e5 0%, #4338ca 100%);
+      transform: scale(1.08);
+      box-shadow: 0 6px 20px -4px rgba(99, 102, 241, 0.5);
+    }
+
+    &:active {
+      transform: scale(0.98);
     }
   }
 
   &.clear-btn {
     background: transparent;
-    color: #475569;
+    color: #64748b;
 
     &:hover {
       color: #94a3b8;
@@ -996,24 +1420,13 @@ const handlePlayerError = (err) => {
   }
 
   &.reset-btn {
-    background: #334155;
+    background: rgba(51, 65, 85, 0.6);
     color: #94a3b8;
 
     &:hover {
-      background: #475569;
+      background: rgba(71, 85, 105, 0.8);
       color: #f8fafc;
     }
-  }
-}
-
-.footer {
-  text-align: center;
-  margin-top: auto;
-  padding: 20px 0;
-  
-  p {
-    font-size: 0.8rem;
-    color: #475569;
   }
 }
 
@@ -1037,12 +1450,13 @@ const handlePlayerError = (err) => {
 
 .modal-card {
   width: 90%;
-  max-width: 400px;
-  background: rgba(30, 41, 59, 0.9);
-  padding: 30px;
+  max-width: 380px;
+  background: linear-gradient(145deg, rgba(30, 41, 59, 0.95) 0%, rgba(15, 23, 42, 0.95) 100%);
+  padding: 28px;
   border-radius: 20px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(99, 102, 241, 0.2);
   text-align: center;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(255, 255, 255, 0.05) inset;
 
   .modal-header {
     margin-bottom: 20px;
@@ -1052,6 +1466,7 @@ const handlePlayerError = (err) => {
       height: 48px;
       color: #ef4444;
       margin: 0 auto 15px;
+      filter: drop-shadow(0 0 10px rgba(239, 68, 68, 0.3));
     }
 
     .success-icon {
@@ -1059,44 +1474,50 @@ const handlePlayerError = (err) => {
       height: 48px;
       color: #10b981;
       margin: 0 auto 15px;
+      filter: drop-shadow(0 0 10px rgba(16, 185, 129, 0.3));
     }
 
     h3 {
       font-size: 1.25rem;
       margin: 0;
+      font-weight: 600;
     }
   }
 
   p {
     color: #94a3b8;
-    margin-bottom: 25px;
-    line-height: 1.5;
+    margin-bottom: 24px;
+    line-height: 1.6;
+    font-size: 0.95rem;
   }
 
   .modal-btn {
-    width: 100%;
-    padding: 12px;
-    background: #6366f1;
-    color: white;
-    border: none;
-    border-radius: 10px;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.2s;
+      width: 100%;
+      padding: 12px;
+      background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+      color: white;
+      border: none;
+      border-radius: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      box-shadow: 0 4px 15px -3px rgba(99, 102, 241, 0.4);
 
-    &:hover {
-      background: #4f46e5;
+      &:hover {
+        background: linear-gradient(135deg, #4f46e5 0%, #4338ca 100%);
+        transform: translateY(-1px);
+        box-shadow: 0 6px 20px -4px rgba(99, 102, 241, 0.5);
+      }
+
+      &:active {
+        transform: translateY(0);
+      }
     }
 
-    &.primary {
-      margin-bottom: 12px;
+    &.auth-modal {
+      max-width: 360px;
     }
   }
-
-  &.auth-modal {
-    max-width: 350px;
-  }
-}
 
 .auth-form {
   .form-group {
@@ -1144,6 +1565,209 @@ const handlePlayerError = (err) => {
 
     &:hover {
       opacity: 1;
+    }
+  }
+}
+
+.add-video-modal {
+  max-width: 420px;
+
+  .video-icon {
+    width: 48px;
+    height: 48px;
+    color: #6366f1;
+    margin: 0 auto 15px;
+    filter: drop-shadow(0 0 10px rgba(99, 102, 241, 0.3));
+  }
+
+  .video-type-tabs {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 20px;
+    padding: 0 4px;
+
+    .tab-btn {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 12px 16px;
+      background: rgba(15, 23, 42, 0.5);
+      border: 1px solid rgba(99, 102, 241, 0.15);
+      border-radius: 10px;
+      color: #94a3b8;
+      font-size: 0.9rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.25s ease;
+
+      svg {
+        width: 18px;
+        height: 18px;
+      }
+
+      &:hover {
+        background: rgba(99, 102, 241, 0.1);
+        border-color: rgba(99, 102, 241, 0.3);
+        color: #c7d2fe;
+      }
+
+      &.active {
+        background: linear-gradient(135deg, rgba(99, 102, 241, 0.2) 0%, rgba(139, 92, 246, 0.15) 100%);
+        border-color: rgba(99, 102, 241, 0.4);
+        color: #f8fafc;
+      }
+    }
+  }
+
+  .add-video-form {
+    .form-group {
+      margin-bottom: 16px;
+      text-align: left;
+
+      label {
+        display: block;
+        margin-bottom: 6px;
+        font-size: 0.9rem;
+        color: #94a3b8;
+      }
+
+      input {
+        width: 100%;
+        padding: 12px 14px;
+        background: rgba(15, 23, 42, 0.6);
+        border: 1px solid rgba(99, 102, 241, 0.2);
+        border-radius: 10px;
+        color: #f8fafc;
+        font-size: 0.95rem;
+        outline: none;
+        transition: all 0.25s ease;
+
+        &::placeholder {
+          color: #475569;
+        }
+
+        &:focus {
+          border-color: rgba(99, 102, 241, 0.5);
+          background: rgba(15, 23, 42, 0.8);
+          box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+        }
+      }
+    }
+
+    .local-video-upload {
+      .upload-area {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 12px;
+        padding: 32px 24px;
+        background: rgba(15, 23, 42, 0.4);
+        border: 2px dashed rgba(99, 102, 241, 0.3);
+        border-radius: 12px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+
+        &:hover {
+          background: rgba(99, 102, 241, 0.1);
+          border-color: rgba(99, 102, 241, 0.5);
+        }
+
+        svg {
+          width: 40px;
+          height: 40px;
+          color: #6366f1;
+        }
+
+        p {
+          color: #c7d2fe;
+          font-size: 0.95rem;
+          font-weight: 500;
+          margin: 0;
+        }
+
+        .upload-hint {
+          color: #64748b;
+          font-size: 0.8rem;
+        }
+      }
+
+      .selected-file {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-top: 16px;
+        padding: 12px 16px;
+        background: rgba(99, 102, 241, 0.1);
+        border: 1px solid rgba(99, 102, 241, 0.2);
+        border-radius: 10px;
+
+        svg {
+          width: 20px;
+          height: 20px;
+          color: #6366f1;
+          flex-shrink: 0;
+        }
+
+        .file-name {
+          flex: 1;
+          color: #e2e8f0;
+          font-size: 0.9rem;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+
+        .clear-file {
+          width: 24px;
+          height: 24px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          background: transparent;
+          border: none;
+          color: #64748b;
+          cursor: pointer;
+          border-radius: 4px;
+          transition: all 0.2s;
+
+          &:hover {
+            color: #ef4444;
+            background: rgba(239, 68, 68, 0.1);
+          }
+
+          svg {
+            width: 16px;
+            height: 16px;
+          }
+        }
+      }
+    }
+
+    .add-video-actions {
+      display: flex;
+      gap: 12px;
+      margin-top: 24px;
+
+      .modal-btn {
+        flex: 1;
+        min-height: 44px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+
+        &.secondary {
+          background: rgba(51, 65, 85, 0.6);
+          box-shadow: none;
+
+          &:hover {
+            background: rgba(71, 85, 105, 0.8);
+            transform: translateY(-1px);
+          }
+        }
+      }
     }
   }
 }

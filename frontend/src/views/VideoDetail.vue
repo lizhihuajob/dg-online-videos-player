@@ -221,12 +221,12 @@ const closeModal = () => {
 
 .modal-card {
   width: 90%;
-  max-width: 400px;
-  background: rgba(30, 41, 59, 0.9);
+  max-width: 380px;
+  background: linear-gradient(145deg, rgba(30, 41, 59, 0.95) 0%, rgba(15, 23, 42, 0.95) 100%);
   border-radius: 20px;
-  padding: 30px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+  padding: 28px;
+  border: 1px solid rgba(99, 102, 241, 0.2);
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(255, 255, 255, 0.05) inset;
   text-align: center;
 
   &.glass {
@@ -242,21 +242,24 @@ const closeModal = () => {
     height: 48px;
     color: #ef4444;
     margin: 0 auto 15px;
+    filter: drop-shadow(0 0 10px rgba(239, 68, 68, 0.3));
   }
 
   h3 {
-    font-size: 1.5rem;
+    font-size: 1.4rem;
     color: #f8fafc;
     margin: 0;
+    font-weight: 600;
   }
 }
 
 .modal-body {
-  margin-bottom: 30px;
+  margin-bottom: 24px;
   p {
     color: #94a3b8;
     line-height: 1.6;
     margin: 0;
+    font-size: 0.95rem;
   }
 }
 
@@ -269,44 +272,57 @@ const closeModal = () => {
   color: white;
   font-weight: 600;
   cursor: pointer;
-  transition: transform 0.2s;
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 15px -3px rgba(99, 102, 241, 0.4);
 
   &:hover {
     transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(79, 70, 229, 0.4);
+    box-shadow: 0 6px 20px -4px rgba(99, 102, 241, 0.5);
+  }
+
+  &:active {
+    transform: translateY(0);
   }
 }
 
 .video-detail-container {
   min-height: 100vh;
-  padding: 20px;
-  background: var(--background-gradient);
+  padding: 24px;
+  background: radial-gradient(ellipse at 20% 0%, #1e1b4b 0%, #0f172a 40%, #020617 100%);
 }
 
 .back-button {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  padding: 12px 20px;
-  background: white;
+  padding: 10px 18px;
+  background: rgba(30, 41, 59, 0.8);
+  border: 1px solid rgba(99, 102, 241, 0.2);
   border-radius: 50px;
-  color: #6366f1;
+  color: #c7d2fe;
   font-weight: 500;
+  font-size: 0.9rem;
   cursor: pointer;
-  box-shadow: var(--card-shadow);
-  transition: var(--transition);
-  margin-bottom: 24px;
+  transition: all 0.3s ease;
+  margin-bottom: 20px;
   user-select: none;
+  backdrop-filter: blur(10px);
 
   &:hover {
-    background: #6366f1;
-    color: white;
+    background: rgba(99, 102, 241, 0.2);
+    border-color: rgba(99, 102, 241, 0.4);
+    color: #f8fafc;
     transform: translateX(-3px);
-    box-shadow: var(--card-hover-shadow);
+    box-shadow: 0 4px 15px -3px rgba(99, 102, 241, 0.3);
   }
 
   &:active {
     transform: translateX(-1px);
+  }
+
+  .back-icon {
+    width: 18px;
+    height: 18px;
   }
 }
 
@@ -322,18 +338,19 @@ const closeModal = () => {
   align-items: center;
   justify-content: center;
   padding: 80px 20px;
-  font-size: 1.1rem;
-  color: #6b7280;
+  font-size: 1rem;
+  color: #94a3b8;
 }
 
 .spinner {
-  width: 50px;
-  height: 50px;
-  border: 4px solid #e5e7eb;
+  width: 48px;
+  height: 48px;
+  border: 3px solid rgba(99, 102, 241, 0.2);
   border-top-color: #6366f1;
   border-radius: 50%;
   animation: spin 1s linear infinite;
-  margin-bottom: 20px;
+  margin-bottom: 16px;
+  box-shadow: 0 0 20px rgba(99, 102, 241, 0.3);
 }
 
 @keyframes spin {
@@ -354,40 +371,44 @@ const closeModal = () => {
 }
 
 .content-wrapper {
-  max-width: 1200px;
+  max-width: 1100px;
   margin: 0 auto;
 }
 
 .player-section {
-  background: #000;
+  background: linear-gradient(145deg, #0f172a 0%, #1e293b 100%);
   border-radius: 16px;
   overflow: hidden;
-  box-shadow: var(--card-shadow);
-  margin-bottom: 24px;
+  border: 1px solid rgba(99, 102, 241, 0.15);
+  box-shadow: 
+    0 25px 50px -12px rgba(0, 0, 0, 0.7),
+    0 0 0 1px rgba(255, 255, 255, 0.02) inset;
+  margin-bottom: 20px;
   position: relative;
 }
 
 .video-info-section {
-  background: white;
+  background: rgba(30, 41, 59, 0.6);
+  border: 1px solid rgba(99, 102, 241, 0.1);
   border-radius: 16px;
-  padding: 24px;
-  box-shadow: var(--card-shadow);
-  margin-bottom: 32px;
+  padding: 20px 24px;
+  backdrop-filter: blur(10px);
+  margin-bottom: 24px;
 }
 
 .video-title {
-  font-size: 1.8rem;
+  font-size: 1.6rem;
   font-weight: 700;
-  color: #1f2937;
-  margin-bottom: 16px;
+  color: #f8fafc;
+  margin-bottom: 14px;
   line-height: 1.3;
 }
 
 .video-meta {
   display: flex;
   flex-wrap: wrap;
-  gap: 16px;
-  margin-bottom: 16px;
+  gap: 14px;
+  margin-bottom: 14px;
   align-items: center;
 }
 
@@ -395,74 +416,78 @@ const closeModal = () => {
   display: flex;
   align-items: center;
   gap: 6px;
-  color: #6b7280;
-  font-size: 0.95rem;
+  color: #94a3b8;
+  font-size: 0.9rem;
 }
 
 .meta-icon {
-  width: 18px;
-  height: 18px;
+  width: 16px;
+  height: 16px;
+  color: #6366f1;
 }
 
 .format-badge {
-  padding: 4px 12px;
-  background: linear-gradient(135deg, #6366f1, #ec4899);
+  padding: 4px 10px;
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.8), rgba(139, 92, 246, 0.8));
   color: white;
   border-radius: 20px;
-  font-size: 0.8rem;
+  font-size: 0.75rem;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
 
 .video-description {
-  color: #6b7280;
+  color: #94a3b8;
   line-height: 1.7;
-  font-size: 1rem;
+  font-size: 0.95rem;
 }
 
 .playlist-section {
-  background: white;
+  background: rgba(30, 41, 59, 0.6);
+  border: 1px solid rgba(99, 102, 241, 0.1);
   border-radius: 16px;
-  padding: 24px;
-  box-shadow: var(--card-shadow);
+  padding: 20px 24px;
+  backdrop-filter: blur(10px);
 }
 
 .playlist-title {
   display: flex;
   align-items: center;
   gap: 10px;
-  font-size: 1.5rem;
+  font-size: 1.25rem;
   font-weight: 700;
-  color: #1f2937;
-  margin-bottom: 24px;
+  color: #f8fafc;
+  margin-bottom: 20px;
 }
 
 .playlist-icon {
-  width: 28px;
-  height: 28px;
+  width: 24px;
+  height: 24px;
   color: #6366f1;
 }
 
 .playlist-items {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 10px;
 }
 
 .playlist-item {
   display: flex;
   align-items: center;
-  gap: 16px;
-  padding: 12px;
+  gap: 14px;
+  padding: 10px 12px;
   border-radius: 12px;
   cursor: pointer;
-  transition: var(--transition);
-  border: 2px solid transparent;
+  transition: all 0.25s ease;
+  border: 1px solid transparent;
+  background: rgba(15, 23, 42, 0.4);
 
   &:hover {
-    background: #f9fafb;
-    transform: translateX(5px);
+    background: rgba(99, 102, 241, 0.1);
+    transform: translateX(4px);
+    border-color: rgba(99, 102, 241, 0.2);
   }
 
   &:active {
@@ -470,8 +495,8 @@ const closeModal = () => {
   }
 
   &.active {
-    background: #f0fdf4;
-    border-color: #6366f1;
+    background: linear-gradient(90deg, rgba(99, 102, 241, 0.15) 0%, rgba(99, 102, 241, 0.05) 100%);
+    border-color: rgba(99, 102, 241, 0.3);
   }
 }
 
@@ -536,10 +561,10 @@ const closeModal = () => {
 }
 
 .playlist-item-title {
-  font-size: 1rem;
+  font-size: 0.95rem;
   font-weight: 600;
-  color: #1f2937;
-  margin-bottom: 4px;
+  color: #e2e8f0;
+  margin-bottom: 3px;
   display: -webkit-box;
   -webkit-line-clamp: 1;
   -webkit-box-orient: vertical;
@@ -547,8 +572,8 @@ const closeModal = () => {
 }
 
 .playlist-item-desc {
-  font-size: 0.85rem;
-  color: #9ca3af;
+  font-size: 0.8rem;
+  color: #64748b;
   display: -webkit-box;
   -webkit-line-clamp: 1;
   -webkit-box-orient: vertical;
@@ -556,26 +581,28 @@ const closeModal = () => {
 }
 
 .play-btn {
-  width: 40px;
-  height: 40px;
+  width: 36px;
+  height: 36px;
   border-radius: 50%;
-  background: linear-gradient(135deg, #6366f1, #ec4899);
+  background: linear-gradient(135deg, #6366f1, #8b5cf6);
   display: flex;
   align-items: center;
   justify-content: center;
   color: white;
   flex-shrink: 0;
-  transition: var(--transition);
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 15px -3px rgba(99, 102, 241, 0.4);
 
   svg {
-    width: 20px;
-    height: 20px;
+    width: 18px;
+    height: 18px;
     margin-left: 2px;
   }
 }
 
 .playlist-item:hover .play-btn {
   transform: scale(1.1);
+  box-shadow: 0 6px 20px -4px rgba(99, 102, 241, 0.5);
 }
 
 // 移动端适配
