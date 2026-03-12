@@ -13,20 +13,51 @@
           </div>
         </div>
         
+        <!-- User Section -->
+        <div class="user-section">
+          <div v-if="userStore.isLoggedIn" class="user-info">
+            <div class="user-avatar">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                <circle cx="12" cy="7" r="4"/>
+              </svg>
+            </div>
+            <div class="user-details">
+              <span class="username">{{ userStore.user?.username }}</span>
+              <span class="user-status">已登录</span>
+            </div>
+            <button class="logout-btn" @click="handleLogout" title="退出登录">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+                <polyline points="16 17 21 12 16 7"/>
+                <line x1="21" y1="12" x2="9" y2="12"/>
+              </svg>
+            </button>
+          </div>
+          <button v-else class="login-btn" @click="showAuthModal = true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/>
+              <polyline points="10 17 15 12 10 7"/>
+              <line x1="15" y1="12" x2="3" y2="12"/>
+            </svg>
+            <span>登录 / 注册</span>
+          </button>
+        </div>
+        
         <div class="history-sidebar-content">
           <div class="section-title">
             <span>播放历史</span>
-            <button v-if="history.length > 0" class="clear-history" @click="clearHistory">清除</button>
+            <button v-if="historyStore.history.length > 0" class="clear-history" @click="clearHistory">清除</button>
           </div>
           
-          <div v-if="history.length === 0" class="empty-history">
+          <div v-if="historyStore.history.length === 0" class="empty-history">
             <p>暂无播放记录</p>
           </div>
           
           <div class="history-sidebar-list">
             <div 
-              v-for="(item, index) in history" 
-              :key="index" 
+              v-for="(item, index) in historyStore.history" 
+              :key="item.id || index" 
               class="history-sidebar-item"
               :class="{ 'is-active': currentUrl === item.url, 'is-local': item.isLocal }"
               @dblclick="playHistoryItem(item, index)"
@@ -34,8 +65,8 @@
             >
               <div class="item-info">
                 <div class="name-wrapper">
-                  <span v-if="item.isLocal" class="local-tag" :class="{ 'is-expired': item.sid !== sessionId }">
-                    {{ item.sid === sessionId ? '本地' : '已失效' }}
+                  <span v-if="item.isLocal" class="local-tag" :class="{ 'is-expired': item.sid !== historyStore.sessionId }">
+                    {{ item.sid === historyStore.sessionId ? '本地' : '已失效' }}
                   </span>
                   <span class="item-name">{{ item.name || item.url }}</span>
                 </div>
@@ -59,6 +90,7 @@
         
         <div class="sidebar-footer">
           <p>双击记录即可播放</p>
+          <p v-if="!userStore.isLoggedIn" class="hint">登录后可同步播放记录</p>
         </div>
       </aside>
 
@@ -72,7 +104,7 @@
         <!-- Top Controls Section -->
         <section class="top-controls-wrapper">
           <div class="top-controls">
-            <!-- URL Input (Green Box Position) -->
+            <!-- URL Input -->
             <div class="url-area">
               <div class="input-wrapper">
                 <svg class="input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -105,7 +137,7 @@
               </div>
             </div>
 
-            <!-- Local Upload (Red Box Position) -->
+            <!-- Local Upload -->
             <div class="upload-area-mini" @click="fileInput.click()">
               <input type="file" ref="fileInput" @change="handleFileSelect" accept="video/*" hidden>
               <svg class="control-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -151,7 +183,10 @@
       </div>
     </div>
 
-    <!-- Modal for errors -->
+    <!-- Auth Modal -->
+    <AuthModal v-if="showAuthModal" @close="showAuthModal = false" />
+
+    <!-- Error Modal -->
     <div v-if="showError" class="modal-overlay" @click="showError = false">
       <div class="modal-card glass" @click.stop>
         <div class="modal-header">
@@ -170,6 +205,12 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import VideoPlayer from '@/components/VideoPlayer.vue'
+import AuthModal from '@/components/AuthModal.vue'
+import { useUserStore } from '@/stores/user'
+import { useHistoryStore } from '@/stores/history'
+
+const userStore = useUserStore()
+const historyStore = useHistoryStore()
 
 const currentUrl = ref('')
 const currentFormat = ref('mp4')
@@ -177,69 +218,38 @@ const inputUrl = ref('https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8')
 const dragOver = ref(false)
 const showError = ref(false)
 const errorMessage = ref('')
-const history = ref([])
-const sessionId = Math.random().toString(36).substring(7) // 当前会话 ID
-const pendingReuploadIndex = ref(-1) // 记录正在尝试恢复的本地记录索引
+const showAuthModal = ref(false)
+const pendingReuploadIndex = ref(-1)
 const fileInput = ref(null)
 
-onMounted(() => {
-  const savedHistory = localStorage.getItem('video-history')
-  if (savedHistory) {
-    history.value = JSON.parse(savedHistory)
-  }
+onMounted(async () => {
+  userStore.init()
+  await historyStore.loadHistory()
 })
 
-const addToHistory = (url, name = '') => {
-  const isLocal = url.startsWith('blob:')
-  const displayName = name || url.split('/').pop().split('?')[0]
-  
-  const newItem = {
-    url,
-    name: displayName,
-    timestamp: Date.now(),
-    isLocal, // 标记是否为本地文件
-    sid: isLocal ? sessionId : null // 记录会话 ID
-  }
-  
-  // 移除重复项：如果是本地文件按名称匹配，否则按 URL 匹配
-  history.value = history.value.filter(item => {
-    if (isLocal && item.isLocal) {
-      return item.name !== displayName
-    }
-    return item.url !== url
-  })
-  
-  // Add to front
-  history.value.unshift(newItem)
-  // Limit to 10 items
-  if (history.value.length > 10) {
-    history.value = history.value.slice(0, 10)
-  }
-  
-  localStorage.setItem('video-history', JSON.stringify(history.value))
+const handleLogout = () => {
+  userStore.logout()
+  historyStore.loadHistory()
 }
 
-const clearHistory = () => {
-  history.value = []
-  localStorage.removeItem('video-history')
+const clearHistory = async () => {
+  await historyStore.clearHistory()
 }
 
-const removeHistoryItem = (index) => {
-  history.value.splice(index, 1)
-  localStorage.setItem('video-history', JSON.stringify(history.value))
+const removeHistoryItem = async (index) => {
+  await historyStore.removeHistoryItem(index)
 }
 
 const playHistoryItem = (item, index) => {
   if (item.isLocal) {
-    // 检查是否是当前会话的本地文件
-    if (item.sid !== sessionId) {
+    if (item.sid !== historyStore.sessionId) {
       pendingReuploadIndex.value = index
       fileInput.value.click()
       return
     }
     currentUrl.value = item.url
-    currentFormat.value = item.name.split('.').pop().toLowerCase()
-    addToHistory(item.url, item.name)
+    currentFormat.value = item.format || item.name.split('.').pop().toLowerCase()
+    historyStore.addToHistory(item.url, item.name, currentFormat.value, true)
   } else {
     inputUrl.value = item.url
     loadUrlVideo()
@@ -259,7 +269,6 @@ const handleFileSelect = (e) => {
   const file = e.target.files[0]
   if (file) {
     if (pendingReuploadIndex.value !== -1) {
-      // 如果是通过点击失效记录触发的上传，则替换该记录
       playFile(file)
       pendingReuploadIndex.value = -1
     } else {
@@ -280,14 +289,14 @@ const playFile = (file) => {
   const url = URL.createObjectURL(file)
   currentUrl.value = url
   currentFormat.value = file.name.split('.').pop().toLowerCase()
-  addToHistory(url, file.name)
+  historyStore.addToHistory(url, file.name, currentFormat.value, true)
 }
 
 const loadUrlVideo = () => {
   if (!inputUrl.value) return
   currentUrl.value = inputUrl.value
   currentFormat.value = getFormat(inputUrl.value)
-  addToHistory(inputUrl.value)
+  historyStore.addToHistory(inputUrl.value, '', currentFormat.value, false)
 }
 
 const resetUrl = () => {
@@ -324,7 +333,6 @@ const handlePlayerError = (err) => {
   width: 100%;
 }
 
-/* Sidebar Styles */
 .sidebar {
   width: 300px;
   height: 100%;
@@ -354,6 +362,106 @@ const handlePlayerError = (err) => {
         font-size: 1.1rem;
         font-weight: 700;
         letter-spacing: -0.5px;
+      }
+    }
+  }
+
+  .user-section {
+    padding: 16px 20px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+
+    .user-info {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px;
+      background: rgba(99, 102, 241, 0.1);
+      border-radius: 12px;
+      border: 1px solid rgba(99, 102, 241, 0.2);
+
+      .user-avatar {
+        width: 36px;
+        height: 36px;
+        background: linear-gradient(135deg, #6366f1, #4f46e5);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+
+        svg {
+          width: 20px;
+          height: 20px;
+          color: white;
+        }
+      }
+
+      .user-details {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+
+        .username {
+          font-size: 0.9rem;
+          font-weight: 600;
+          color: #f8fafc;
+        }
+
+        .user-status {
+          font-size: 0.75rem;
+          color: #6366f1;
+        }
+      }
+
+      .logout-btn {
+        width: 32px;
+        height: 32px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: transparent;
+        border: none;
+        color: #64748b;
+        border-radius: 8px;
+        cursor: pointer;
+        transition: all 0.2s;
+
+        &:hover {
+          background: rgba(239, 68, 68, 0.1);
+          color: #ef4444;
+        }
+
+        svg {
+          width: 18px;
+          height: 18px;
+        }
+      }
+    }
+
+    .login-btn {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 12px;
+      background: linear-gradient(135deg, #6366f1, #4f46e5);
+      border: none;
+      border-radius: 12px;
+      color: white;
+      font-size: 0.9rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+
+      &:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 20px rgba(99, 102, 241, 0.3);
+      }
+
+      svg {
+        width: 18px;
+        height: 18px;
       }
     }
   }
@@ -533,11 +641,16 @@ const handlePlayerError = (err) => {
       font-size: 0.75rem;
       color: #475569;
       text-align: center;
+      margin: 0;
+
+      &.hint {
+        margin-top: 4px;
+        color: #6366f1;
+      }
     }
   }
 }
 
-/* Main Content Styles */
 .main-content {
   flex: 1;
   display: flex;
@@ -769,7 +882,6 @@ const handlePlayerError = (err) => {
   -webkit-backdrop-filter: blur(12px);
 }
 
-/* Modal styles */
 .modal-overlay {
   position: fixed;
   top: 0;
@@ -823,71 +935,11 @@ const handlePlayerError = (err) => {
     border-radius: 10px;
     font-weight: 600;
     cursor: pointer;
+    transition: all 0.2s;
 
     &:hover {
       background: #4f46e5;
     }
-  }
-}
-
-/* Responsive Styles */
-@media (max-width: 1024px) {
-  .sidebar {
-    width: 260px;
-  }
-  .main-content {
-    padding: 30px;
-  }
-}
-
-@media (max-width: 768px) {
-  .app-layout {
-    flex-direction: column;
-    overflow-y: auto;
-    height: auto;
-  }
-  .sidebar {
-    width: 100%;
-    height: auto;
-    max-height: 250px;
-    border-right: none;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-    
-    .sidebar-header {
-      padding: 16px 20px;
-    }
-    .history-sidebar-content {
-      padding: 10px 0;
-    }
-  }
-  .main-content {
-    padding: 20px;
-    overflow-y: visible;
-  }
-}
-
-@media (max-width: 640px) {
-  .top-controls {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 12px;
-
-    .upload-area-mini {
-      height: 44px;
-      justify-content: center;
-    }
-  }
-  
-  .header {
-    margin-bottom: 20px;
-    .subtitle {
-      font-size: 0.8rem;
-    }
-  }
-
-  .url-area .input-wrapper {
-    height: 44px;
-    padding-left: 12px;
   }
 }
 </style>
