@@ -23,8 +23,12 @@
         <VideoPlayer
           :url="currentVideo.url"
           :format="currentVideo.format"
+          :has-prev="hasPrev"
+          :has-next="hasNext"
           @ready="onPlayerReady"
           @error="onPlayerError"
+          @prev="playPrev"
+          @next="playNext"
         />
       </div>
 
@@ -131,6 +135,33 @@ const route = useRoute()
 const videos = ref([])
 const loading = ref(true)
 const currentVideo = ref(null)
+
+const currentIndex = computed(() => {
+  if (!currentVideo.value || !videos.value.length) return -1
+  return videos.value.findIndex(v => v.id === currentVideo.value.id)
+})
+
+const hasPrev = computed(() => {
+  return currentIndex.value > 0
+})
+
+const hasNext = computed(() => {
+  return currentIndex.value >= 0 && currentIndex.value < videos.value.length - 1
+})
+
+const playPrev = () => {
+  if (hasPrev.value) {
+    currentVideo.value = videos.value[currentIndex.value - 1]
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+}
+
+const playNext = () => {
+  if (hasNext.value) {
+    currentVideo.value = videos.value[currentIndex.value + 1]
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+}
 
 onMounted(async () => {
   const id = route.params.id
