@@ -2,12 +2,29 @@
   <div class="video-player-container">
     <div ref="videoContainer" class="video-wrapper"></div>
     <div v-if="loading" class="loading-overlay">
-      <div class="spinner"></div>
-      <p>正在加载视频...</p>
+      <div class="loading-content">
+        <div class="spinner"></div>
+        <p>正在加载视频...</p>
+        <span class="loading-hint">首次加载可能需要一些时间</span>
+      </div>
     </div>
     <div v-if="error" class="error-message">
-      <p>⚠️ 视频加载失败</p>
-      <p class="error-detail">{{ error }}</p>
+      <div class="error-content">
+        <svg class="error-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="10"/>
+          <line x1="12" y1="8" x2="12" y2="12"/>
+          <line x1="12" y1="16" x2="12.01" y2="16"/>
+        </svg>
+        <p class="error-title">视频加载失败</p>
+        <p class="error-detail">{{ error }}</p>
+        <button class="retry-btn" @click="retryLoad">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="23 4 23 10 17 10"/>
+            <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
+          </svg>
+          重新加载
+        </button>
+      </div>
     </div>
   </div>
 </template>
@@ -152,6 +169,11 @@ onBeforeUnmount(() => {
 watch([() => props.url, () => props.format], () => {
   initPlayer()
 })
+
+const retryLoad = () => {
+  error.value = null
+  initPlayer()
+}
 </script>
 
 <style lang="scss" scoped>
@@ -215,16 +237,63 @@ watch([() => props.url, () => props.format], () => {
   z-index: 10;
   backdrop-filter: blur(8px);
 
-  p {
-    margin: 8px 0;
+  .error-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    padding: 20px;
+  }
+
+  .error-icon {
+    width: 56px;
+    height: 56px;
+    color: #ef4444;
+    margin-bottom: 16px;
+    filter: drop-shadow(0 0 15px rgba(239, 68, 68, 0.4));
+  }
+
+  .error-title {
+    font-size: 1.2rem;
+    font-weight: 600;
+    margin-bottom: 8px;
+    color: #f8fafc;
   }
 
   .error-detail {
-    font-size: 0.85rem;
+    font-size: 0.9rem;
     color: #fca5a5;
     max-width: 80%;
     text-align: center;
     line-height: 1.5;
+    margin-bottom: 24px;
+  }
+
+  .retry-btn {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 24px;
+    background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+    border: none;
+    border-radius: 10px;
+    color: white;
+    font-size: 0.95rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 15px -3px rgba(99, 102, 241, 0.4);
+
+    &:hover {
+      background: linear-gradient(135deg, #4f46e5 0%, #4338ca 100%);
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px -4px rgba(99, 102, 241, 0.5);
+    }
+
+    svg {
+      width: 18px;
+      height: 18px;
+    }
   }
 }
 
@@ -234,30 +303,44 @@ watch([() => props.url, () => props.format], () => {
   left: 0;
   width: 100%;
   height: 100%;
-  background: rgba(15, 23, 42, 0.85);
+  background: rgba(15, 23, 42, 0.9);
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   color: #f8fafc;
   z-index: 5;
-  backdrop-filter: blur(4px);
+  backdrop-filter: blur(8px);
+
+  .loading-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+  }
 
   p {
     margin-top: 16px;
-    font-size: 0.9rem;
-    color: #94a3b8;
+    font-size: 1rem;
+    color: #e2e8f0;
+    font-weight: 500;
     letter-spacing: 0.5px;
   }
 
+  .loading-hint {
+    margin-top: 8px;
+    font-size: 0.8rem;
+    color: #64748b;
+  }
+
   .spinner {
-    width: 44px;
-    height: 44px;
-    border: 3px solid rgba(99, 102, 241, 0.2);
+    width: 56px;
+    height: 56px;
+    border: 4px solid rgba(99, 102, 241, 0.15);
     border-top-color: #6366f1;
     border-radius: 50%;
-    animation: spin 1s linear infinite;
-    box-shadow: 0 0 20px rgba(99, 102, 241, 0.3);
+    animation: spin 0.8s linear infinite;
+    box-shadow: 0 0 30px rgba(99, 102, 241, 0.3);
   }
 }
 

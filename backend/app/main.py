@@ -144,6 +144,63 @@ def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depend
 def read_users_me(current_user: models.User = Depends(get_current_user)):
     return current_user
 
+
+class UserUpdate(BaseModel):
+    username: str
+    email: str
+
+
+class PasswordUpdate(BaseModel):
+    current_password: str
+    new_password: str
+
+
+@app.put("/users/me", response_model=UserResponse)
+def update_user(
+    user_update: UserUpdate,
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(database.get_db)
+):
+    # Check if username is taken by another user
+    if user_update.username != current_user.username:
+        existing_user = db.query(models.User).filter(
+            models.User.username == user_update.username,
+            models.User.id != current_user.id
+        ).first()
+        if existing_user:
+            raise HTTPException(status_code=400, detail="Username already taken")
+    
+    # Check if email is taken by another user
+    if user_update.email != current_user.email:
+        existing_email = db.query(models.User).filter(
+            models.User.email == user_update.email,
+            models.User.id != current_user.id
+        ).first()
+        if existing_email:
+            raise HTTPException(status_code=400, detail="Email already registered")
+    
+    current_user.username = user_update.username
+    current_user.email = user_update.email
+    db.commit()
+    db.refresh(current_user)
+    return current_user
+
+
+@app.put("/users/me/password")
+def update_password(
+    password_update: PasswordUpdate,
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(database.get_db)
+):
+    # Verify current password
+    if not auth.verify_password(password_update.current_password, current_user.hashed_password):
+        raise HTTPException(status_code=400, detail="Current password is incorrect")
+    
+    # Update password
+    current_user.hashed_password = auth.get_password_hash(password_update.new_password)
+    db.commit()
+    return {"message": "Password updated successfully"}
+
 @app.post("/history", response_model=PlayHistoryResponse)
 def add_play_history(
     history: PlayHistoryCreate,

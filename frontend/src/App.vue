@@ -19,7 +19,7 @@ html {
 body {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
   margin: 0;
-  background: #0f172a;
+  background: #0a0f1a;
   min-height: 100vh;
   color: #f8fafc;
   -webkit-font-smoothing: antialiased;
