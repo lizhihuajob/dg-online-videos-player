@@ -13,7 +13,8 @@
           </div>
           <div class="user-area" v-if="currentUser">
             <div class="user-avatar" @click="goToProfile" title="个人中心">
-              <span class="avatar-text">{{ currentUser.username.charAt(0).toUpperCase() }}</span>
+              <img v-if="currentUser?.avatar" :src="getAvatarUrl(currentUser.avatar)" :alt="currentUser?.username" class="avatar-img">
+              <span v-else class="avatar-text">{{ currentUser.username.charAt(0).toUpperCase() }}</span>
             </div>
             <span class="username" @click="goToProfile">{{ currentUser.username }}</span>
             <button class="logout-btn" @click="logout" title="退出登录">
@@ -24,7 +25,8 @@
           </div>
           <button v-else class="login-btn" @click="showAuthModal = true" title="登录/注册">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2M16 3.13a4 4 0 0 1 0 7.75M21 21v-2a4 4 0 0 0-3-3.87M16 8a6 6 0 0 1 12 0v4a4 4 0 0 1-3 3.87"/>
+              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+              <circle cx="12" cy="7" r="4"></circle>
             </svg>
           </button>
         </div>
@@ -228,7 +230,7 @@
           <svg class="error-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
           </svg>
-          <h3>播放失败</h3>
+          <h3>{{ errorTitle || '操作失败' }}</h3>
         </div>
         <p>{{ errorMessage }}</p>
         <button class="modal-btn" @click="showError = false">确定</button>
@@ -239,11 +241,11 @@
     <div v-if="showSuccess" class="modal-overlay" @click="showSuccess = false">
       <div class="modal-card glass" @click.stop>
         <div class="modal-header">
-          <svg class="success-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <svg v-if="successTitle !== '注册成功'" class="success-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <circle cx="12" cy="12" r="10"/>
             <path d="M9 12l2 2 4-4"/>
           </svg>
-          <h3>操作成功</h3>
+          <h3>{{ successTitle || '操作成功' }}</h3>
         </div>
         <p>{{ successMessage }}</p>
         <button class="modal-btn" @click="showSuccess = false">确定</button>
@@ -383,8 +385,10 @@ const currentFormat = ref('mp4')
 const inputUrl = ref('https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8')
 const dragOver = ref(false)
 const showError = ref(false)
+const errorTitle = ref('')
 const errorMessage = ref('')
 const showSuccess = ref(false)
+const successTitle = ref('')
 const successMessage = ref('')
 const onlineHistory = ref([])
 const localHistory = ref([])
@@ -416,6 +420,12 @@ const selectedLocalFile = ref(null)
 const uploadToServer = ref(false)
 
 const isLoggedIn = computed(() => !!currentUser.value)
+
+const getAvatarUrl = (avatarPath) => {
+  if (!avatarPath) return ''
+  if (avatarPath.startsWith('http')) return avatarPath
+  return `${API_BASE}${avatarPath}`
+}
 
 onMounted(() => {
   const token = localStorage.getItem('access_token')
@@ -483,15 +493,18 @@ const handleAuth = async () => {
         isLoginMode.value = true
         authForm.value = { username: '', email: '', password: '' }
         showSuccess.value = true
-        successMessage.value = '注册成功，请登录'
+        successTitle.value = '注册成功'
+        successMessage.value = ''
       }
     } else {
       const error = await response.json()
       showError.value = true
+      errorTitle.value = isLoginMode.value ? '登录失败' : '注册失败'
       errorMessage.value = error.detail || '操作失败'
     }
   } catch (err) {
     showError.value = true
+    errorTitle.value = isLoginMode.value ? '登录失败' : '注册失败'
     errorMessage.value = '网络错误'
   }
 }
@@ -826,6 +839,7 @@ const getFormat = (url) => {
 }
 
 const handlePlayerError = (err) => {
+  errorTitle.value = '播放失败'
   if (currentUrl.value.startsWith('blob:')) {
     errorMessage.value = '本地视频加载失败。可能是链接已过期或文件已被移动，请重新上传。'
   } else {
@@ -988,6 +1002,13 @@ const handleModalFileSelect = (e) => {
         &:hover {
           transform: scale(1.1);
           box-shadow: 0 4px 15px rgba(99, 102, 241, 0.5);
+        }
+
+        .avatar-img {
+          width: 100%;
+          height: 100%;
+          border-radius: 50%;
+          object-fit: cover;
         }
 
         .avatar-text {
