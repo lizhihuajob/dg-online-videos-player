@@ -55,6 +55,51 @@
 
 ---
 
+## 🧪 后端单元测试 (Backend Unit Testing)
+
+本项目已为后端 API 添加完整的单元测试，使用 **pytest** 测试框架。
+
+### 📋 测试覆盖范围
+- ✅ **用户认证测试** (注册、登录、密码哈希、JWT Token)
+- ✅ **播放历史测试** (添加、查询、删除、清空)
+- ✅ **本地播放历史测试** (本地视频历史记录管理)
+- ✅ **视频上传测试** (文件上传验证)
+- ✅ **API 基础测试** (服务健康检查)
+
+### 🚀 运行测试
+
+#### 方法 1: 在本地环境运行
+```bash
+cd backend
+pip install pytest pytest-asyncio httpx pytest-md
+PYTHONPATH=. pytest tests/ -v
+```
+
+#### 方法 2: 生成 Markdown 测试报告
+```bash
+cd backend
+PYTHONPATH=. pytest tests/ -v --md=../test_report.md
+```
+
+### 📁 测试文件结构
+```
+backend/tests/
+├── __init__.py          # 测试包标识
+├── conftest.py          # pytest 配置与 fixtures
+├── test_auth.py         # 认证模块测试
+└── test_main.py         # API 端点测试
+```
+
+### 🎯 测试结果示例
+```
+25 tests ran in 9.86 seconds
+- 25 passed
+```
+
+查看完整测试报告: [test_report.md](./test_report.md)
+
+---
+
 ## 🐳 Docker 镜像源配置 (Docker Registry Configuration)
 
 ### 推荐配置（基于实际项目验证）
