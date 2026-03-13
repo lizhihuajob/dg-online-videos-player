@@ -12,7 +12,10 @@
             <span>Vision Player</span>
           </div>
           <div class="user-area" v-if="currentUser">
-            <span class="username">{{ currentUser.username }}</span>
+            <div class="user-avatar" @click="goToProfile" title="进入个人中心">
+              {{ currentUser.username ? currentUser.username.charAt(0).toUpperCase() : 'U' }}
+            </div>
+            <span class="username" @click="goToProfile" style="cursor: pointer;">{{ currentUser.username }}</span>
             <button class="logout-btn" @click="logout" title="退出登录">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/>
@@ -361,9 +364,11 @@
 
 <script setup>
 import { ref, onMounted, computed } from 'vue'
+import { useRouter } from 'vue-router'
 import VideoPlayer from '@/components/VideoPlayer.vue'
 
 const API_BASE = 'http://localhost:8000'
+const router = useRouter()
 
 const currentUrl = ref('')
 const currentFormat = ref('mp4')
@@ -479,6 +484,10 @@ const handleAuth = async () => {
     showError.value = true
     errorMessage.value = '网络错误'
   }
+}
+
+const goToProfile = () => {
+  router.push('/profile')
 }
 
 const logout = () => {
@@ -916,9 +925,36 @@ const handleModalFileSelect = (e) => {
       align-items: center;
       gap: 8px;
 
+      .user-avatar {
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+        color: white;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 600;
+        font-size: 0.95rem;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        box-shadow: 0 2px 8px rgba(99, 102, 241, 0.3);
+
+        &:hover {
+          transform: scale(1.05);
+          box-shadow: 0 4px 12px rgba(99, 102, 241, 0.4);
+        }
+      }
+
       .username {
         font-size: 0.9rem;
         color: #a5b4fc;
+        cursor: pointer;
+        transition: color 0.2s;
+
+        &:hover {
+          color: #818cf8;
+        }
       }
 
       .logout-btn {

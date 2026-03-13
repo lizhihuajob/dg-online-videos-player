@@ -36,10 +36,19 @@ class UserCreate(BaseModel):
     email: str
     password: str
 
+class UserUpdate(BaseModel):
+    username: str
+    email: str
+
+class PasswordUpdate(BaseModel):
+    old_password: str
+    new_password: str
+
 class UserResponse(BaseModel):
     id: int
     username: str
     email: str
+    created_at: str = ""
 
     class Config:
         from_attributes = True
@@ -115,7 +124,12 @@ def register(user: UserCreate, db: Session = Depends(database.get_db)):
     db.add(new_user)
     db.commit()
     db.refresh(new_user)
-    return new_user
+    return {
+        "id": new_user.id,
+        "username": new_user.username,
+        "email": new_user.email,
+        "created_at": new_user.created_at.isoformat() if new_user.created_at else ""
+    }
 
 @app.post("/token", response_model=Token)
 def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(database.get_db)):
@@ -136,13 +150,66 @@ def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depend
         "user": {
             "id": user.id,
             "username": user.username,
-            "email": user.email
+            "email": user.email,
+            "created_at": user.created_at.isoformat() if user.created_at else ""
         }
     }
 
-@app.get("/users/me", response_model=UserResponse)
+@app.get("/users/me")
 def read_users_me(current_user: models.User = Depends(get_current_user)):
-    return current_user
+    return {
+        "id": current_user.id,
+        "username": current_user.username,
+        "email": current_user.email,
+        "created_at": current_user.created_at.isoformat() if current_user.created_at else ""
+    }
+
+@app.put("/users/me", response_model=UserResponse)
+def update_user_info(
+    user_update: UserUpdate,
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(database.get_db)
+):
+    if user_update.username != current_user.username:
+        existing_user = db.query(models.User).filter(
+            models.User.username == user_update.username
+        ).first()
+        if existing_user:
+            raise HTTPException(status_code=400, detail="Username already exists")
+    
+    if user_update.email != current_user.email:
+        existing_email = db.query(models.User).filter(
+            models.User.email == user_update.email
+        ).first()
+        if existing_email:
+            raise HTTPException(status_code=400, detail="Email already exists")
+    
+    current_user.username = user_update.username
+    current_user.email = user_update.email
+    db.commit()
+    db.refresh(current_user)
+    return {
+        "id": current_user.id,
+        "username": current_user.username,
+        "email": current_user.email,
+        "created_at": current_user.created_at.isoformat() if current_user.created_at else ""
+    }
+
+@app.put("/users/me/password")
+def update_password(
+    password_update: PasswordUpdate,
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(database.get_db)
+):
+    if not auth.verify_password(password_update.old_password, current_user.hashed_password):
+        raise HTTPException(status_code=400, detail="Current password is incorrect")
+    
+    if len(password_update.new_password) < 6:
+        raise HTTPException(status_code=400, detail="New password must be at least 6 characters")
+    
+    current_user.hashed_password = auth.get_password_hash(password_update.new_password)
+    db.commit()
+    return {"message": "Password updated successfully"}
 
 @app.post("/history", response_model=PlayHistoryResponse)
 def add_play_history(
