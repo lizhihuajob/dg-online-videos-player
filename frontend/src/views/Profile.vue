@@ -18,8 +18,19 @@
       <!-- User Info Card -->
       <div class="profile-card glass">
         <div class="user-profile-header">
-          <div class="profile-avatar">
-            <span class="avatar-text">{{ userInitial }}</span>
+          <div class="profile-avatar-wrapper">
+            <div class="profile-avatar">
+              <img v-if="currentUser?.avatar" :src="getAvatarUrl(currentUser.avatar)" :alt="currentUser?.username" class="avatar-img">
+              <span v-else class="avatar-text">{{ userInitial }}</span>
+            </div>
+            <input type="file" ref="avatarFileInput" @change="handleAvatarUpload" accept="image/*" hidden>
+            <button class="avatar-upload-btn" @click="avatarFileInput.click" title="更换头像">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                <polyline points="17 8 12 3 7 8"/>
+                <line x1="12" y1="3" x2="12" y2="15"/>
+              </svg>
+            </button>
           </div>
           <div class="profile-info">
             <h2 class="profile-name">{{ currentUser?.username }}</h2>
@@ -52,6 +63,17 @@
             <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
           </svg>
           修改密码
+        </button>
+        <button 
+          class="tab-btn" 
+          :class="{ active: activeTab === 'history' }"
+          @click="activeTab = 'history'"
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"/>
+            <polyline points="12 6 12 12 16 14"/>
+          </svg>
+          播放日志
         </button>
       </div>
 
@@ -127,6 +149,115 @@
             <span v-if="isUpdating" class="btn-spinner"></span>
             <span v-else>修改密码</span>
           </button>
+        </div>
+      </div>
+
+      <!-- History Tab Content -->
+      <div v-if="activeTab === 'history'" class="tab-content glass">
+        <div class="history-header">
+          <h3 class="section-title">播放日志</h3>
+          <button class="clear-history-btn" @click="clearAllHistory" v-if="playHistoryData.total > 0">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M3 6h18"/>
+              <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/>
+              <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+            </svg>
+            清空历史
+          </button>
+        </div>
+        <div class="history-search-bar">
+          <div class="search-input-wrapper">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="11" cy="11" r="8"/>
+              <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+            </svg>
+            <input 
+              type="text" 
+              v-model="searchKeyword" 
+              placeholder="搜索视频名称或URL..." 
+              @input="handleSearch"
+            >
+          </div>
+        </div>
+        <div v-if="playHistoryData.total === 0" class="empty-history">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"/>
+            <polyline points="12 6 12 12 16 14"/>
+          </svg>
+          <p>暂无播放记录</p>
+        </div>
+        <div v-else class="history-table-container">
+          <table class="history-table">
+            <thead>
+              <tr>
+                <th>视频名称</th>
+                <th>播放时间</th>
+                <th>格式</th>
+                <th>操作</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr 
+                v-for="item in playHistoryData.items" 
+                :key="item.id" 
+                class="history-table-row"
+              >
+                <td class="history-title-cell">
+                  <div class="history-title-content">
+                    <svg class="history-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <circle cx="12" cy="12" r="10"/>
+                      <path d="M10 8l6 4-6 4V8z" fill="currentColor"/>
+                    </svg>
+                    <span class="history-title-text">{{ item.video_name || '未命名视频' }}</span>
+                  </div>
+                </td>
+                <td class="history-time-cell">{{ formatDateTime(item.created_at) }}</td>
+                <td class="history-format-cell">{{ item.video_format }}</td>
+                <td class="history-action-cell">
+                  <button class="delete-history-item" @click="deleteHistoryItem(item.id)" title="删除记录">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M18 6L6 18M6 6l12 12"/>
+                    </svg>
+                  </button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+          <div class="history-pagination">
+            <div class="pagination-info">
+              共 {{ playHistoryData.total }} 条记录，第 {{ playHistoryData.page }}/{{ playHistoryData.total_pages }} 页
+            </div>
+            <div class="pagination-controls">
+              <button 
+                class="pagination-btn" 
+                @click="changePage(1)" 
+                :disabled="playHistoryData.page === 1"
+              >
+                首页
+              </button>
+              <button 
+                class="pagination-btn" 
+                @click="changePage(playHistoryData.page - 1)" 
+                :disabled="playHistoryData.page === 1"
+              >
+                上一页
+              </button>
+              <button 
+                class="pagination-btn" 
+                @click="changePage(playHistoryData.page + 1)" 
+                :disabled="playHistoryData.page === playHistoryData.total_pages"
+              >
+                下一页
+              </button>
+              <button 
+                class="pagination-btn" 
+                @click="changePage(playHistoryData.total_pages)" 
+                :disabled="playHistoryData.page === playHistoryData.total_pages"
+              >
+                末页
+              </button>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -205,19 +336,6 @@ const isPasswordFormValid = computed(() => {
          passwordForm.value.newPassword &&
          passwordForm.value.newPassword.length >= 6 &&
          passwordForm.value.newPassword === passwordForm.value.confirmPassword
-})
-
-onMounted(() => {
-  const token = localStorage.getItem('access_token')
-  const user = localStorage.getItem('current_user')
-  if (token && user) {
-    accessToken.value = token
-    currentUser.value = JSON.parse(user)
-    profileForm.value.username = currentUser.value.username
-    profileForm.value.email = currentUser.value.email
-  } else {
-    router.push('/')
-  }
 })
 
 const apiRequest = async (endpoint, options = {}) => {
@@ -320,6 +438,152 @@ const updatePassword = async () => {
     isUpdating.value = false
   }
 }
+
+const avatarFileInput = ref(null)
+const playHistory = ref([])
+const playHistoryData = ref({
+  items: [],
+  total: 0,
+  page: 1,
+  page_size: 10,
+  total_pages: 0
+})
+const searchKeyword = ref('')
+const searchTimeout = ref(null)
+
+const getAvatarUrl = (avatarPath) => {
+  if (!avatarPath) return ''
+  if (avatarPath.startsWith('http')) return avatarPath
+  return `${API_BASE}${avatarPath}`
+}
+
+const handleAvatarUpload = async (event) => {
+  const file = event.target.files?.[0]
+  if (!file) return
+
+  if (!file.type.startsWith('image/')) {
+    errorMessage.value = '请选择图片文件'
+    showError.value = true
+    return
+  }
+
+  isUpdating.value = true
+  try {
+    const formData = new FormData()
+    formData.append('file', file)
+
+    const response = await apiRequest('/upload-avatar', {
+      method: 'POST',
+      body: formData
+    })
+
+    if (response.ok) {
+      const result = await response.json()
+      currentUser.value.avatar = result.avatar_url
+      localStorage.setItem('current_user', JSON.stringify(currentUser.value))
+      successMessage.value = '头像上传成功'
+      showSuccess.value = true
+    } else {
+      const error = await response.json()
+      errorMessage.value = error.detail || '头像上传失败'
+      showError.value = true
+    }
+  } catch (err) {
+    errorMessage.value = '网络错误，请稍后重试'
+    showError.value = true
+  } finally {
+    isUpdating.value = false
+    if (avatarFileInput.value) {
+      avatarFileInput.value.value = ''
+    }
+  }
+}
+
+const formatDateTime = (dateString) => {
+  if (!dateString) return ''
+  const date = new Date(dateString)
+  return new Intl.DateTimeFormat('zh-CN', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit'
+  }).format(date)
+}
+
+const loadPlayHistory = async (page = 1, search = '') => {
+  try {
+    let url = `/history?page=${page}&page_size=10`
+    if (search) {
+      url += `&search=${encodeURIComponent(search)}`
+    }
+    const response = await apiRequest(url, {
+      method: 'GET'
+    })
+    if (response.ok) {
+      const data = await response.json()
+      playHistoryData.value = data
+      playHistory.value = data.items
+    }
+  } catch (err) {
+    console.error('Failed to load play history:', err)
+  }
+}
+
+const handleSearch = () => {
+  if (searchTimeout.value) {
+    clearTimeout(searchTimeout.value)
+  }
+  searchTimeout.value = setTimeout(() => {
+    loadPlayHistory(1, searchKeyword.value)
+  }, 300)
+}
+
+const changePage = (page) => {
+  if (page >= 1 && page <= playHistoryData.value.total_pages) {
+    loadPlayHistory(page, searchKeyword.value)
+  }
+}
+
+const deleteHistoryItem = async (id) => {
+  try {
+    const response = await apiRequest(`/history/${id}`, {
+      method: 'DELETE'
+    })
+    if (response.ok) {
+      loadPlayHistory(playHistoryData.value.page, searchKeyword.value)
+    }
+  } catch (err) {
+    console.error('Failed to delete history item:', err)
+  }
+}
+
+const clearAllHistory = async () => {
+  try {
+    const response = await apiRequest('/history', {
+      method: 'DELETE'
+    })
+    if (response.ok) {
+      loadPlayHistory(1, searchKeyword.value)
+    }
+  } catch (err) {
+    console.error('Failed to clear history:', err)
+  }
+}
+
+onMounted(() => {
+  const token = localStorage.getItem('access_token')
+  const user = localStorage.getItem('current_user')
+  if (token && user) {
+    accessToken.value = token
+    currentUser.value = JSON.parse(user)
+    profileForm.value.username = currentUser.value.username
+    profileForm.value.email = currentUser.value.email
+    loadPlayHistory()
+  } else {
+    router.push('/')
+  }
+})
 </script>
 
 <style lang="scss" scoped>
@@ -405,7 +669,12 @@ const updatePassword = async () => {
     align-items: center;
     gap: 24px;
 
+    .profile-avatar-wrapper {
+      position: relative;
+    }
+
     .profile-avatar {
+      position: relative;
       width: 80px;
       height: 80px;
       border-radius: 50%;
@@ -415,10 +684,44 @@ const updatePassword = async () => {
       justify-content: center;
       box-shadow: 0 4px 20px rgba(99, 102, 241, 0.4);
 
+      .avatar-img {
+        width: 100%;
+        height: 100%;
+        border-radius: 50%;
+        object-fit: cover;
+      }
+
       .avatar-text {
         color: white;
         font-size: 2rem;
         font-weight: 700;
+      }
+    }
+
+    .avatar-upload-btn {
+      position: absolute;
+      bottom: 0;
+      right: 0;
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+      border: 2px solid rgba(30, 41, 59, 0.8);
+      color: white;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: all 0.3s ease;
+
+      svg {
+        width: 16px;
+        height: 16px;
+      }
+
+      &:hover {
+        background: linear-gradient(135deg, #4f46e5 0%, #4338ca 100%);
+        transform: scale(1.05);
       }
     }
 
@@ -583,6 +886,265 @@ const updatePassword = async () => {
         border-radius: 50%;
         animation: spin 0.8s linear infinite;
       }
+    }
+  }
+}
+
+.history-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+
+  .section-title {
+    margin: 0;
+    padding: 0;
+    border: none;
+  }
+
+  .clear-history-btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 16px;
+    background: rgba(239, 68, 68, 0.1);
+    border: 1px solid rgba(239, 68, 68, 0.2);
+    border-radius: 8px;
+    color: #fca5a5;
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: all 0.3s ease;
+
+    svg {
+      width: 16px;
+      height: 16px;
+    }
+
+    &:hover {
+      background: rgba(239, 68, 68, 0.2);
+      border-color: rgba(239, 68, 68, 0.3);
+      color: #fecaca;
+    }
+  }
+}
+
+.empty-history {
+  text-align: center;
+  padding: 60px 20px;
+  color: #94a3b8;
+
+  svg {
+    width: 64px;
+    height: 64px;
+    margin: 0 auto 16px;
+    opacity: 0.3;
+  }
+
+  p {
+    margin: 0;
+    font-size: 1rem;
+  }
+}
+
+.history-search-bar {
+  margin-bottom: 20px;
+
+  .search-input-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+
+    svg {
+      position: absolute;
+      left: 12px;
+      width: 18px;
+      height: 18px;
+      color: #64748b;
+      pointer-events: none;
+    }
+
+    input {
+      width: 100%;
+      padding: 12px 16px 12px 40px;
+      background: rgba(15, 23, 42, 0.6);
+      border: 1px solid rgba(99, 102, 241, 0.2);
+      border-radius: 10px;
+      color: #f8fafc;
+      font-size: 0.95rem;
+      outline: none;
+      transition: all 0.25s ease;
+
+      &::placeholder {
+        color: #475569;
+      }
+
+      &:focus {
+        border-color: rgba(99, 102, 241, 0.5);
+        background: rgba(15, 23, 42, 0.8);
+        box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+      }
+    }
+  }
+}
+
+.history-table-container {
+  overflow-x: auto;
+}
+
+.history-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  margin-bottom: 20px;
+
+  th {
+    padding: 12px 16px;
+    text-align: left;
+    background: rgba(99, 102, 241, 0.1);
+    color: #a5b4fc;
+    font-weight: 500;
+    font-size: 0.9rem;
+    border-bottom: 1px solid rgba(99, 102, 241, 0.2);
+
+    &:first-child {
+      border-top-left-radius: 10px;
+    }
+
+    &:last-child {
+      border-top-right-radius: 10px;
+    }
+  }
+
+  td {
+    padding: 12px 16px;
+    border-bottom: 1px solid rgba(99, 102, 241, 0.05);
+  }
+
+  .history-table-row {
+    background: rgba(15, 23, 42, 0.3);
+    transition: all 0.2s ease;
+
+    &:hover {
+      background: rgba(15, 23, 42, 0.5);
+    }
+
+    &:last-child td {
+      border-bottom: none;
+
+      &:first-child {
+        border-bottom-left-radius: 10px;
+      }
+
+      &:last-child {
+        border-bottom-right-radius: 10px;
+      }
+    }
+  }
+
+  .history-title-cell {
+    .history-title-content {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+
+      .history-icon {
+        width: 20px;
+        height: 20px;
+        color: #a5b4fc;
+        flex-shrink: 0;
+      }
+
+      .history-title-text {
+        color: #f8fafc;
+        font-size: 0.95rem;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        max-width: 300px;
+      }
+    }
+  }
+
+  .history-time-cell {
+    color: #94a3b8;
+    font-size: 0.9rem;
+    white-space: nowrap;
+  }
+
+  .history-format-cell {
+    color: #64748b;
+    font-size: 0.85rem;
+    text-transform: uppercase;
+  }
+
+  .history-action-cell {
+    width: 50px;
+  }
+}
+
+.delete-history-item {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: rgba(239, 68, 68, 0.1);
+  border: none;
+  color: #fca5a5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  flex-shrink: 0;
+
+  svg {
+    width: 16px;
+    height: 16px;
+  }
+
+  &:hover {
+    background: rgba(239, 68, 68, 0.2);
+    color: #fecaca;
+  }
+}
+
+.history-pagination {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 20px;
+  gap: 16px;
+  flex-wrap: wrap;
+
+  .pagination-info {
+    color: #94a3b8;
+    font-size: 0.9rem;
+  }
+
+  .pagination-controls {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .pagination-btn {
+    padding: 8px 16px;
+    background: rgba(15, 23, 42, 0.6);
+    border: 1px solid rgba(99, 102, 241, 0.2);
+    border-radius: 8px;
+    color: #a5b4fc;
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+
+    &:hover:not(:disabled) {
+      background: rgba(99, 102, 241, 0.1);
+      border-color: rgba(99, 102, 241, 0.3);
+      color: #f8fafc;
+    }
+
+    &:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
     }
   }
 }
