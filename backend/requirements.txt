@@ -6,3 +6,6 @@ python-jose[cryptography]
 bcrypt
 python-multipart
 pydantic
+pytest
+pytest-cov
+httpx

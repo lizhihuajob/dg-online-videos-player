@@ -4,13 +4,14 @@
 - Frontend: Vue 3 + Vite + XGPlayer
 - Styling: SCSS
 - Container: Docker + Nginx
+- Backend: FastAPI + SQLAlchemy + PostgreSQL
 
-## 🚀 启动指南 (How to Run)
+## 🚀 启动指南
 1. 确保 Docker Desktop 已启动。
 2. 在根目录执行：`docker compose up --build`
 3. 等待容器启动完成...
 
-## 🔗 服务地址 (Services)
+## 🔗 服务地址
 - Frontend: http://localhost:3000
 - Backend API: http://localhost:8000
 
@@ -55,7 +56,61 @@
 
 ---
 
-## 🐳 Docker 镜像源配置 (Docker Registry Configuration)
+## 🧪 单元测试
+
+### 测试框架
+- **pytest**: Python 测试框架
+- **pytest-cov**: 测试覆盖率报告
+- **httpx**: HTTP 客户端（用于 FastAPI 测试）
+
+### 测试覆盖范围
+| 模块 | 测试内容 |
+|------|---------|
+| `test_auth.py` | 密码哈希、JWT Token 生成与验证 |
+| `test_main.py` | API 端点测试（用户注册、登录、播放历史、视频上传） |
+| `test_models.py` | 数据库模型测试（User、PlayHistory、LocalPlayHistory） |
+
+### 运行测试
+
+#### 安装测试依赖
+```bash
+cd backend
+pip install -r requirements.txt
+```
+
+#### 运行所有测试
+```bash
+cd backend
+pytest
+```
+
+#### 运行测试并生成覆盖率报告
+```bash
+cd backend
+pytest --cov=app --cov-report=term-missing --cov-report=html
+```
+
+#### 运行指定测试文件
+```bash
+cd backend
+pytest tests/test_auth.py
+pytest tests/test_main.py
+pytest tests/test_models.py
+```
+
+#### 运行指定测试类或方法
+```bash
+cd backend
+pytest tests/test_auth.py::TestPasswordHashing
+pytest tests/test_auth.py::TestPasswordHashing::test_verify_password_correct
+```
+
+### 测试报告
+测试完成后，覆盖率报告将生成在 `backend/htmlcov/` 目录下，打开 `index.html` 可查看详细报告。
+
+---
+
+## 🐳 Docker 镜像源配置
 
 ### 推荐配置（基于实际项目验证）
 
