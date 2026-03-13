@@ -13,7 +13,8 @@
           </div>
           <div class="user-area" v-if="currentUser">
             <div class="user-avatar" @click="goToProfile" title="个人中心">
-              <span class="avatar-text">{{ currentUser.username.charAt(0).toUpperCase() }}</span>
+              <img v-if="currentUser.avatar" :src="getAvatarUrl(currentUser.avatar)" alt="头像" class="avatar-image" />
+              <span v-else class="avatar-text">{{ currentUser.username.charAt(0).toUpperCase() }}</span>
             </div>
             <span class="username" @click="goToProfile">{{ currentUser.username }}</span>
             <button class="logout-btn" @click="logout" title="退出登录">
@@ -24,7 +25,8 @@
           </div>
           <button v-else class="login-btn" @click="showAuthModal = true" title="登录/注册">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2M16 3.13a4 4 0 0 1 0 7.75M21 21v-2a4 4 0 0 0-3-3.87M16 8a6 6 0 0 1 12 0v4a4 4 0 0 1-3 3.87"/>
+              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+              <circle cx="12" cy="7" r="4"/>
             </svg>
           </button>
         </div>
@@ -228,7 +230,7 @@
           <svg class="error-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
           </svg>
-          <h3>播放失败</h3>
+          <h3>{{ errorTitle }}</h3>
         </div>
         <p>{{ errorMessage }}</p>
         <button class="modal-btn" @click="showError = false">确定</button>
@@ -243,7 +245,7 @@
             <circle cx="12" cy="12" r="10"/>
             <path d="M9 12l2 2 4-4"/>
           </svg>
-          <h3>操作成功</h3>
+          <h3>{{ successTitle }}</h3>
         </div>
         <p>{{ successMessage }}</p>
         <button class="modal-btn" @click="showSuccess = false">确定</button>
@@ -383,8 +385,10 @@ const currentFormat = ref('mp4')
 const inputUrl = ref('https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8')
 const dragOver = ref(false)
 const showError = ref(false)
+const errorTitle = ref('播放失败')
 const errorMessage = ref('')
 const showSuccess = ref(false)
+const successTitle = ref('操作成功')
 const successMessage = ref('')
 const onlineHistory = ref([])
 const localHistory = ref([])
@@ -476,23 +480,25 @@ const handleAuth = async () => {
         localStorage.setItem('current_user', JSON.stringify(data.user))
         showAuthModal.value = false
         authForm.value = { username: '', email: '', password: '' }
-        // 登录后同步本地播放记录到后端，然后用后端记录替换本地记录
         await syncLocalHistoryToBackend()
         await loadHistoryFromBackend()
       } else {
         isLoginMode.value = true
         authForm.value = { username: '', email: '', password: '' }
-        showSuccess.value = true
+        successTitle.value = '注册成功'
         successMessage.value = '注册成功，请登录'
+        showSuccess.value = true
       }
     } else {
       const error = await response.json()
-      showError.value = true
+      errorTitle.value = isLoginMode.value ? '登录失败' : '注册失败'
       errorMessage.value = error.detail || '操作失败'
+      showError.value = true
     }
   } catch (err) {
-    showError.value = true
+    errorTitle.value = isLoginMode.value ? '登录失败' : '注册失败'
     errorMessage.value = '网络错误'
+    showError.value = true
   }
 }
 
@@ -527,6 +533,12 @@ const logout = () => {
 
 const goToProfile = () => {
   router.push('/profile')
+}
+
+const getAvatarUrl = (avatar) => {
+  if (!avatar) return null
+  if (avatar.startsWith('http')) return avatar
+  return `${API_BASE}${avatar}`
 }
 
 const loadOnlineHistoryFromBackend = async () => {
@@ -646,6 +658,16 @@ const addToHistory = async (url, name = '', fileInfo = null) => {
         if (response.ok) {
           await loadOnlineHistoryFromBackend()
         }
+        
+        // 记录播放日志
+        await apiRequest('/play-logs', {
+          method: 'POST',
+          body: JSON.stringify({
+            video_name: displayName,
+            video_url: url,
+            video_format: format
+          })
+        })
       } catch (err) {
         console.error('Failed to save online history:', err)
       }
@@ -984,10 +1006,17 @@ const handleModalFileSelect = (e) => {
         cursor: pointer;
         transition: all 0.3s ease;
         box-shadow: 0 2px 8px rgba(99, 102, 241, 0.3);
+        overflow: hidden;
 
         &:hover {
           transform: scale(1.1);
           box-shadow: 0 4px 15px rgba(99, 102, 241, 0.5);
+        }
+
+        .avatar-image {
+          width: 100%;
+          height: 100%;
+          object-fit: cover;
         }
 
         .avatar-text {
