@@ -20,6 +20,7 @@ wheels/
 *.egg
 .PYTHONBUILD
 .coverage
+.pytest_cache
 htmlcov/
 *.db
 *.sqlite3
