@@ -53,6 +53,93 @@
 - 移动端优化的触摸交互
 - 自适应视频播放器
 
+## 🧪 后端单元测试
+
+### 测试框架
+- **pytest**: Python 测试框架
+- **pytest-asyncio**: 异步测试支持
+- **httpx**: HTTP 客户端（FastAPI TestClient 依赖）
+- **pytest-cov**: 测试覆盖率报告
+
+### 测试文件结构
+```
+backend/
+├── tests/
+│   ├── __init__.py
+│   ├── conftest.py          # 测试配置和 fixtures
+│   ├── test_auth.py         # 认证相关测试
+│   ├── test_play_history.py # 播放历史测试
+│   ├── test_local_history.py# 本地播放历史测试
+│   ├── test_upload.py       # 文件上传测试
+│   └── test_main.py         # 主应用和 API 测试
+├── pytest.ini              # pytest 配置文件
+└── requirements-dev.txt    # 开发依赖（包含测试库）
+```
+
+### 测试覆盖范围
+
+#### 1. 认证测试 (test_auth.py)
+- 密码哈希验证（正确/错误密码）
+- JWT Token 生成与验证
+- 用户注册（成功/重复用户名/重复邮箱）
+- 用户登录（成功/错误密码/用户不存在）
+- 获取当前用户信息（成功/无 Token/无效 Token）
+
+#### 2. 播放历史测试 (test_play_history.py)
+- 添加播放历史（成功/重复替换）
+- 获取播放历史（空数据/有数据/排序和限制）
+- 删除单条历史（成功/不存在/其他用户）
+- 清空播放历史（成功/仅影响当前用户）
+
+#### 3. 本地播放历史测试 (test_local_history.py)
+- 添加本地播放历史（成功/重复替换）
+- 获取本地播放历史（空数据/有数据/排序和限制）
+- 删除单条本地历史（成功/不存在/其他用户）
+- 清空本地播放历史（成功/仅影响当前用户）
+
+#### 4. 文件上传测试 (test_upload.py)
+- 上传视频文件（MP4/WebM）
+- 未授权上传
+- 上传非视频文件
+- 无扩展名文件处理
+- 长文件名处理
+
+#### 5. 主应用测试 (test_main.py)
+- 根端点响应
+- API 文档访问
+- CORS 配置
+
+### 运行测试
+
+#### 安装依赖
+```bash
+cd backend
+pip install -r requirements-dev.txt
+```
+
+#### 运行所有测试
+```bash
+cd backend
+pytest
+```
+
+#### 运行特定测试文件
+```bash
+pytest tests/test_auth.py
+pytest tests/test_play_history.py
+```
+
+#### 生成覆盖率报告
+```bash
+pytest --cov=app --cov-report=html
+pytest --cov=app --cov-report=term-missing
+```
+
+#### 详细输出
+```bash
+pytest -v
+```
+
 ---
 
 ## 🐳 Docker 镜像源配置 (Docker Registry Configuration)
