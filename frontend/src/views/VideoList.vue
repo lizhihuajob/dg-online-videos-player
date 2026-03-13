@@ -476,6 +476,8 @@ const handleAuth = async () => {
         localStorage.setItem('current_user', JSON.stringify(data.user))
         showAuthModal.value = false
         authForm.value = { username: '', email: '', password: '' }
+        // 登录后同步本地播放记录到后端，然后用后端记录替换本地记录
+        await syncLocalHistoryToBackend()
         await loadHistoryFromBackend()
       } else {
         isLoginMode.value = true
@@ -491,6 +493,26 @@ const handleAuth = async () => {
   } catch (err) {
     showError.value = true
     errorMessage.value = '网络错误'
+  }
+}
+
+// 同步本地播放记录到后端
+const syncLocalHistoryToBackend = async () => {
+  // 同步在线视频历史
+  const localOnlineHistory = onlineHistory.value.filter(item => item.id && String(item.id).startsWith('local_'))
+  for (const item of localOnlineHistory) {
+    try {
+      await apiRequest('/history', {
+        method: 'POST',
+        body: JSON.stringify({
+          video_url: item.video_url,
+          video_name: item.video_name,
+          video_format: item.video_format
+        })
+      })
+    } catch (err) {
+      console.error('Failed to sync online history to backend:', err)
+    }
   }
 }
 
@@ -626,6 +648,22 @@ const addToHistory = async (url, name = '', fileInfo = null) => {
         }
       } catch (err) {
         console.error('Failed to save online history:', err)
+      }
+    } else {
+      // 未登录时，添加到本地在线视频历史
+      const newItem = {
+        id: 'local_' + Date.now(),
+        video_url: url,
+        video_name: displayName,
+        video_format: format,
+        created_at: new Date().toISOString()
+      }
+
+      // 去重：移除相同URL的在线视频
+      onlineHistory.value = onlineHistory.value.filter(item => item.video_url !== url)
+      onlineHistory.value.unshift(newItem)
+      if (onlineHistory.value.length > 10) {
+        onlineHistory.value = onlineHistory.value.slice(0, 10)
       }
     }
   }
