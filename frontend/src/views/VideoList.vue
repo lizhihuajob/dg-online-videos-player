@@ -627,6 +627,20 @@ const addToHistory = async (url, name = '', fileInfo = null) => {
       } catch (err) {
         console.error('Failed to save online history:', err)
       }
+    } else {
+      // 未登录时，保存到本地数组
+      const newItem = {
+        video_url: url,
+        video_name: displayName,
+        video_format: format,
+        created_at: new Date().toISOString()
+      }
+      // 去重：移除相同URL的视频
+      onlineHistory.value = onlineHistory.value.filter(item => item.video_url !== url)
+      onlineHistory.value.unshift(newItem)
+      if (onlineHistory.value.length > 10) {
+        onlineHistory.value = onlineHistory.value.slice(0, 10)
+      }
     }
   }
 }
