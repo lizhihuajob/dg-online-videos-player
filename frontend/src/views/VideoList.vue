@@ -12,7 +12,10 @@
             <span>Vision Player</span>
           </div>
           <div class="user-area" v-if="currentUser">
-            <span class="username">{{ currentUser.username }}</span>
+            <div class="user-avatar" @click="goToProfile" title="个人中心">
+              <span class="avatar-text">{{ currentUser.username.charAt(0).toUpperCase() }}</span>
+            </div>
+            <span class="username" @click="goToProfile">{{ currentUser.username }}</span>
             <button class="logout-btn" @click="logout" title="退出登录">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/>
@@ -151,6 +154,14 @@
 
       <!-- Right Main Content -->
       <div class="main-content">
+        <!-- Hidden file input for reupload -->
+        <input 
+          type="file" 
+          ref="fileInput" 
+          @change="handleFileSelect" 
+          accept="video/*" 
+          hidden
+        >
         <!-- Main Player Section -->
         <main class="player-section">
           <div 
@@ -361,8 +372,10 @@
 
 <script setup>
 import { ref, onMounted, computed } from 'vue'
+import { useRouter } from 'vue-router'
 import VideoPlayer from '@/components/VideoPlayer.vue'
 
+const router = useRouter()
 const API_BASE = 'http://localhost:8000'
 
 const currentUrl = ref('')
@@ -488,6 +501,10 @@ const logout = () => {
   localStorage.removeItem('current_user')
   onlineHistory.value = []
   localHistory.value = []
+}
+
+const goToProfile = () => {
+  router.push('/profile')
 }
 
 const loadOnlineHistoryFromBackend = async () => {
@@ -860,7 +877,7 @@ const handleModalFileSelect = (e) => {
 <style lang="scss" scoped>
 .main-container {
   min-height: 100vh;
-  background: radial-gradient(ellipse at 20% 0%, #1e1b4b 0%, #0f172a 40%, #020617 100%);
+  background: radial-gradient(ellipse at 20% 0%, #1a1a3e 0%, #0a0f1a 40%, #050810 100%);
   color: #f8fafc;
   overflow: hidden;
 }
@@ -872,14 +889,16 @@ const handleModalFileSelect = (e) => {
 }
 
 .sidebar {
-  width: 280px;
+  width: 300px;
   height: 100%;
   display: flex;
   flex-direction: column;
-  background: rgba(15, 23, 42, 0.6);
-  border-right: 1px solid rgba(99, 102, 241, 0.1);
+  background: rgba(15, 23, 42, 0.7);
+  border-right: 1px solid rgba(99, 102, 241, 0.12);
   transition: all 0.3s ease;
   flex-shrink: 0;
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
 
   .sidebar-header {
     padding: 20px 20px 16px;
@@ -916,9 +935,39 @@ const handleModalFileSelect = (e) => {
       align-items: center;
       gap: 8px;
 
+      .user-avatar {
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        box-shadow: 0 2px 8px rgba(99, 102, 241, 0.3);
+
+        &:hover {
+          transform: scale(1.1);
+          box-shadow: 0 4px 15px rgba(99, 102, 241, 0.5);
+        }
+
+        .avatar-text {
+          color: white;
+          font-size: 0.9rem;
+          font-weight: 600;
+        }
+      }
+
       .username {
         font-size: 0.9rem;
         color: #a5b4fc;
+        cursor: pointer;
+        transition: color 0.2s;
+
+        &:hover {
+          color: #f8fafc;
+        }
       }
 
       .logout-btn {
@@ -1305,21 +1354,23 @@ const handleModalFileSelect = (e) => {
     position: relative;
     width: 100%;
     height: 100%;
-    background: linear-gradient(145deg, #0f172a 0%, #1e293b 100%);
-    border-radius: 16px;
-    border: 1px solid rgba(99, 102, 241, 0.15);
+    background: linear-gradient(145deg, #0a0f1a 0%, #151b2e 100%);
+    border-radius: 20px;
+    border: 1px solid rgba(99, 102, 241, 0.12);
     box-shadow: 
-      0 25px 50px -12px rgba(0, 0, 0, 0.7),
-      0 0 0 1px rgba(255, 255, 255, 0.02) inset;
+      0 25px 50px -12px rgba(0, 0, 0, 0.8),
+      0 0 0 1px rgba(255, 255, 255, 0.02) inset,
+      0 0 100px rgba(99, 102, 241, 0.05) inset;
     overflow: hidden;
     transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 
     &.drag-active {
       border-color: rgba(99, 102, 241, 0.6);
-      transform: scale(1.005);
+      transform: scale(1.008);
       box-shadow: 
-        0 0 60px rgba(99, 102, 241, 0.25),
-        0 25px 50px -12px rgba(0, 0, 0, 0.7);
+        0 0 80px rgba(99, 102, 241, 0.2),
+        0 25px 50px -12px rgba(0, 0, 0, 0.8),
+        0 0 0 1px rgba(255, 255, 255, 0.05) inset;
     }
   }
 
@@ -1332,31 +1383,34 @@ const handleModalFileSelect = (e) => {
     justify-content: center;
     cursor: pointer;
     color: #475569;
-    transition: all 0.3s ease;
-    background: radial-gradient(circle at center, rgba(99, 102, 241, 0.05) 0%, transparent 70%);
+    transition: all 0.4s ease;
+    background: radial-gradient(circle at center, rgba(99, 102, 241, 0.08) 0%, transparent 70%);
 
     &:hover {
       color: #94a3b8;
-      background: radial-gradient(circle at center, rgba(99, 102, 241, 0.1) 0%, transparent 70%);
+      background: radial-gradient(circle at center, rgba(99, 102, 241, 0.15) 0%, transparent 70%);
     }
 
     .placeholder-icon {
-      width: 64px;
-      height: 64px;
-      margin-bottom: 20px;
-      opacity: 0.5;
-      transition: all 0.3s ease;
+      width: 80px;
+      height: 80px;
+      margin-bottom: 24px;
+      opacity: 0.4;
+      transition: all 0.4s ease;
+      color: #6366f1;
     }
 
     &:hover .placeholder-icon {
       opacity: 0.7;
-      transform: scale(1.05);
+      transform: scale(1.1);
+      filter: drop-shadow(0 0 20px rgba(99, 102, 241, 0.4));
     }
 
     p {
-      font-size: 1rem;
+      font-size: 1.1rem;
       letter-spacing: 0.5px;
       color: #64748b;
+      font-weight: 500;
     }
   }
 }
