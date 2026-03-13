@@ -64,7 +64,7 @@
               <div class="history-sidebar-list">
                 <div 
                   v-for="(item, index) in onlineHistory" 
-                  :key="'online-' + item.id" 
+                  :key="'online-' + (item.id || item.video_url)" 
                   class="history-sidebar-item"
                   :class="{ 'is-active': currentUrl === item.video_url }"
                   @dblclick="playOnlineHistoryItem(item)"
@@ -476,6 +476,7 @@ const handleAuth = async () => {
         localStorage.setItem('current_user', JSON.stringify(data.user))
         showAuthModal.value = false
         authForm.value = { username: '', email: '', password: '' }
+        await syncTempHistoryToBackend()
         await loadHistoryFromBackend()
       } else {
         isLoginMode.value = true
@@ -556,6 +557,24 @@ const loadHistoryFromBackend = async () => {
   await loadLocalHistoryFromBackend()
 }
 
+const syncTempHistoryToBackend = async () => {
+  const tempItems = onlineHistory.value.filter(item => item.is_temp)
+  for (const item of tempItems) {
+    try {
+      await apiRequest('/history', {
+        method: 'POST',
+        body: JSON.stringify({
+          video_url: item.video_url,
+          video_name: item.video_name || '',
+          video_format: item.video_format || 'mp4'
+        })
+      })
+    } catch (err) {
+      console.error('Failed to sync temp history item:', err)
+    }
+  }
+}
+
 // 折叠/展开切换
 const toggleOnlineHistory = () => {
   isOnlineHistoryOpen.value = !isOnlineHistoryOpen.value
@@ -611,6 +630,20 @@ const addToHistory = async (url, name = '', fileInfo = null) => {
     }
   } else {
     // 在线视频历史
+    const newItem = {
+      video_url: url,
+      video_name: displayName,
+      video_format: format,
+      created_at: new Date().toISOString(),
+      is_temp: true
+    }
+
+    onlineHistory.value = onlineHistory.value.filter(item => item.video_url !== url)
+    onlineHistory.value.unshift(newItem)
+    if (onlineHistory.value.length > 10) {
+      onlineHistory.value = onlineHistory.value.slice(0, 10)
+    }
+
     if (isLoggedIn.value) {
       try {
         const response = await apiRequest('/history', {
