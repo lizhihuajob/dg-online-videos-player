@@ -18,8 +18,19 @@
       <!-- User Info Card -->
       <div class="profile-card glass">
         <div class="user-profile-header">
-          <div class="profile-avatar">
-            <span class="avatar-text">{{ userInitial }}</span>
+          <div class="profile-avatar-wrapper">
+            <div class="profile-avatar" @click="triggerAvatarUpload">
+              <img v-if="currentUser?.avatar" :src="getAvatarUrl(currentUser.avatar)" alt="avatar" class="avatar-img">
+              <span v-else class="avatar-text">{{ userInitial }}</span>
+              <div class="avatar-overlay">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+                  <circle cx="12" cy="13" r="4"/>
+                </svg>
+                <span>更换头像</span>
+              </div>
+            </div>
+            <input type="file" ref="avatarInput" @change="handleAvatarChange" accept="image/*" hidden>
           </div>
           <div class="profile-info">
             <h2 class="profile-name">{{ currentUser?.username }}</h2>
@@ -52,6 +63,17 @@
             <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
           </svg>
           修改密码
+        </button>
+        <button 
+          class="tab-btn" 
+          :class="{ active: activeTab === 'history' }"
+          @click="activeTab = 'history'"
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"/>
+            <polyline points="12 6 12 12 16 14"/>
+          </svg>
+          播放日志
         </button>
       </div>
 
@@ -129,6 +151,104 @@
           </button>
         </div>
       </div>
+
+      <!-- History Tab Content -->
+      <div v-if="activeTab === 'history'" class="tab-content glass">
+        <h3 class="section-title">播放日志</h3>
+        
+        <!-- Search Bar -->
+        <div class="search-bar">
+          <div class="search-input-wrapper">
+            <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="11" cy="11" r="8"/>
+              <path d="M21 21l-4.35-4.35"/>
+            </svg>
+            <input 
+              type="text" 
+              v-model="searchQuery" 
+              placeholder="搜索视频名称..."
+              @keyup.enter="handleSearch"
+            >
+            <button v-if="searchQuery" class="clear-search" @click="clearSearch">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="18" y1="6" x2="6" y2="18"/>
+                <line x1="6" y1="6" x2="18" y2="18"/>
+              </svg>
+            </button>
+          </div>
+          <button class="search-btn" @click="handleSearch">搜索</button>
+        </div>
+
+        <!-- History Table -->
+        <div v-if="playHistory.length === 0" class="empty-history">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <circle cx="12" cy="12" r="10"/>
+            <polyline points="12 6 12 12 16 14"/>
+          </svg>
+          <p>{{ searchQuery ? '未找到匹配的记录' : '暂无播放记录' }}</p>
+        </div>
+        <div v-else class="history-table-wrapper">
+          <table class="history-table">
+            <thead>
+              <tr>
+                <th class="col-index">序号</th>
+                <th class="col-name">视频名称</th>
+                <th class="col-format">格式</th>
+                <th class="col-time">播放时间</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="(item, index) in playHistory" :key="item.id">
+                <td class="col-index">{{ (currentPage - 1) * pageSize + index + 1 }}</td>
+                <td class="col-name" :title="item.video_name || '未命名视频'">
+                  {{ item.video_name || '未命名视频' }}
+                </td>
+                <td class="col-format">
+                  <span class="format-tag">{{ item.video_format?.toUpperCase() || 'MP4' }}</span>
+                </td>
+                <td class="col-time">{{ formatTime(item.created_at) }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Pagination -->
+        <div v-if="totalPages > 1" class="pagination">
+          <button 
+            class="page-btn" 
+            :disabled="currentPage === 1"
+            @click="goToPage(currentPage - 1)"
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="15 18 9 12 15 6"/>
+            </svg>
+          </button>
+          
+          <div class="page-numbers">
+            <button 
+              v-for="page in displayedPages" 
+              :key="page"
+              class="page-number"
+              :class="{ active: page === currentPage }"
+              @click="goToPage(page)"
+            >
+              {{ page }}
+            </button>
+          </div>
+          
+          <button 
+            class="page-btn" 
+            :disabled="currentPage === totalPages"
+            @click="goToPage(currentPage + 1)"
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="9 18 15 12 9 6"/>
+            </svg>
+          </button>
+          
+          <span class="page-info">共 {{ totalItems }} 条记录</span>
+        </div>
+      </div>
     </div>
 
     <!-- Success Modal -->
@@ -179,6 +299,15 @@ const showSuccess = ref(false)
 const showError = ref(false)
 const successMessage = ref('')
 const errorMessage = ref('')
+const avatarInput = ref(null)
+
+// Play history pagination and search
+const playHistory = ref([])
+const currentPage = ref(1)
+const pageSize = ref(10)
+const totalItems = ref(0)
+const totalPages = ref(1)
+const searchQuery = ref('')
 
 const profileForm = ref({
   username: '',
@@ -215,6 +344,7 @@ onMounted(() => {
     currentUser.value = JSON.parse(user)
     profileForm.value.username = currentUser.value.username
     profileForm.value.email = currentUser.value.email
+    loadPlayHistory()
   } else {
     router.push('/')
   }
@@ -239,6 +369,129 @@ const apiRequest = async (endpoint, options = {}) => {
 
 const goBack = () => {
   router.push('/')
+}
+
+const getAvatarUrl = (avatar) => {
+  if (!avatar) return ''
+  if (avatar.startsWith('http')) return avatar
+  return `${API_BASE}${avatar}`
+}
+
+const triggerAvatarUpload = () => {
+  avatarInput.value.click()
+}
+
+const handleAvatarChange = async (e) => {
+  const file = e.target.files[0]
+  if (!file) return
+
+  if (!file.type.startsWith('image/')) {
+    errorMessage.value = '请选择图片文件'
+    showError.value = true
+    return
+  }
+
+  if (file.size > 5 * 1024 * 1024) {
+    errorMessage.value = '图片大小不能超过5MB'
+    showError.value = true
+    return
+  }
+
+  isUpdating.value = true
+  try {
+    const formData = new FormData()
+    formData.append('file', file)
+
+    const response = await apiRequest('/users/me/avatar', {
+      method: 'POST',
+      body: formData
+    })
+
+    if (response.ok) {
+      const data = await response.json()
+      currentUser.value.avatar = data.avatar
+      localStorage.setItem('current_user', JSON.stringify(currentUser.value))
+      successMessage.value = '头像更新成功'
+      showSuccess.value = true
+    } else {
+      const error = await response.json()
+      errorMessage.value = error.detail || '头像上传失败'
+      showError.value = true
+    }
+  } catch (err) {
+    errorMessage.value = '网络错误，请稍后重试'
+    showError.value = true
+  } finally {
+    isUpdating.value = false
+    avatarInput.value.value = ''
+  }
+}
+
+const loadPlayHistory = async () => {
+  try {
+    const params = new URLSearchParams({
+      page: currentPage.value.toString(),
+      page_size: pageSize.value.toString()
+    })
+    if (searchQuery.value) {
+      params.append('search', searchQuery.value)
+    }
+    
+    const response = await apiRequest(`/history?${params}`)
+    if (response.ok) {
+      const data = await response.json()
+      playHistory.value = data.items
+      totalItems.value = data.total
+      totalPages.value = data.total_pages
+    }
+  } catch (err) {
+    console.error('Failed to load play history:', err)
+  }
+}
+
+const handleSearch = () => {
+  currentPage.value = 1
+  loadPlayHistory()
+}
+
+const clearSearch = () => {
+  searchQuery.value = ''
+  currentPage.value = 1
+  loadPlayHistory()
+}
+
+const goToPage = (page) => {
+  if (page < 1 || page > totalPages.value) return
+  currentPage.value = page
+  loadPlayHistory()
+}
+
+const displayedPages = computed(() => {
+  const pages = []
+  const maxDisplay = 5
+  let start = Math.max(1, currentPage.value - Math.floor(maxDisplay / 2))
+  let end = Math.min(totalPages.value, start + maxDisplay - 1)
+  
+  if (end - start < maxDisplay - 1) {
+    start = Math.max(1, end - maxDisplay + 1)
+  }
+  
+  for (let i = start; i <= end; i++) {
+    pages.push(i)
+  }
+  return pages
+})
+
+const formatTime = (timestamp) => {
+  if (!timestamp) return ''
+  const date = new Date(timestamp)
+  return date.toLocaleString('zh-CN', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit'
+  })
 }
 
 const updateProfile = async () => {
@@ -405,20 +658,65 @@ const updatePassword = async () => {
     align-items: center;
     gap: 24px;
 
-    .profile-avatar {
-      width: 80px;
-      height: 80px;
-      border-radius: 50%;
-      background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      box-shadow: 0 4px 20px rgba(99, 102, 241, 0.4);
+    .profile-avatar-wrapper {
+      position: relative;
 
-      .avatar-text {
-        color: white;
-        font-size: 2rem;
-        font-weight: 700;
+      .profile-avatar {
+        width: 80px;
+        height: 80px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 4px 20px rgba(99, 102, 241, 0.4);
+        cursor: pointer;
+        position: relative;
+        overflow: hidden;
+        transition: all 0.3s ease;
+
+        .avatar-img {
+          width: 100%;
+          height: 100%;
+          object-fit: cover;
+        }
+
+        .avatar-text {
+          color: white;
+          font-size: 2rem;
+          font-weight: 700;
+        }
+
+        .avatar-overlay {
+          position: absolute;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          background: rgba(0, 0, 0, 0.6);
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          opacity: 0;
+          transition: opacity 0.3s ease;
+
+          svg {
+            width: 24px;
+            height: 24px;
+            color: white;
+            margin-bottom: 4px;
+          }
+
+          span {
+            color: white;
+            font-size: 0.7rem;
+          }
+        }
+
+        &:hover .avatar-overlay {
+          opacity: 1;
+        }
       }
     }
 
@@ -585,6 +883,284 @@ const updatePassword = async () => {
       }
     }
   }
+
+  .search-bar {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 24px;
+
+    .search-input-wrapper {
+      flex: 1;
+      position: relative;
+      display: flex;
+      align-items: center;
+
+      .search-icon {
+        position: absolute;
+        left: 12px;
+        width: 18px;
+        height: 18px;
+        color: #64748b;
+      }
+
+      input {
+        width: 100%;
+        padding: 10px 36px 10px 38px;
+        background: rgba(15, 23, 42, 0.6);
+        border: 1px solid rgba(99, 102, 241, 0.2);
+        border-radius: 10px;
+        color: #f8fafc;
+        font-size: 0.9rem;
+        outline: none;
+        transition: all 0.25s ease;
+
+        &::placeholder {
+          color: #475569;
+        }
+
+        &:focus {
+          border-color: rgba(99, 102, 241, 0.5);
+          background: rgba(15, 23, 42, 0.8);
+          box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+        }
+      }
+
+      .clear-search {
+        position: absolute;
+        right: 8px;
+        width: 24px;
+        height: 24px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: transparent;
+        border: none;
+        color: #64748b;
+        cursor: pointer;
+        border-radius: 4px;
+        transition: all 0.2s;
+
+        &:hover {
+          color: #f8fafc;
+          background: rgba(255, 255, 255, 0.1);
+        }
+
+        svg {
+          width: 14px;
+          height: 14px;
+        }
+      }
+    }
+
+    .search-btn {
+      padding: 10px 20px;
+      background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+      border: none;
+      border-radius: 10px;
+      color: white;
+      font-size: 0.9rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.3s ease;
+
+      &:hover {
+        background: linear-gradient(135deg, #4f46e5 0%, #4338ca 100%);
+        transform: translateY(-1px);
+      }
+    }
+  }
+
+  .empty-history {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 48px 24px;
+    color: #64748b;
+
+    svg {
+      width: 48px;
+      height: 48px;
+      margin-bottom: 16px;
+      opacity: 0.5;
+    }
+
+    p {
+      font-size: 0.95rem;
+    }
+  }
+
+  .history-table-wrapper {
+    overflow-x: auto;
+    border-radius: 12px;
+    border: 1px solid rgba(99, 102, 241, 0.1);
+
+    .history-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.9rem;
+
+      thead {
+        background: rgba(15, 23, 42, 0.8);
+
+        th {
+          padding: 14px 16px;
+          text-align: left;
+          font-weight: 600;
+          color: #94a3b8;
+          border-bottom: 1px solid rgba(99, 102, 241, 0.15);
+          white-space: nowrap;
+
+          &.col-index {
+            width: 60px;
+            text-align: center;
+          }
+
+          &.col-format {
+            width: 80px;
+          }
+
+          &.col-time {
+            width: 160px;
+          }
+        }
+      }
+
+      tbody {
+        tr {
+          background: rgba(15, 23, 42, 0.4);
+          transition: all 0.2s ease;
+
+          &:hover {
+            background: rgba(99, 102, 241, 0.08);
+          }
+
+          &:nth-child(even) {
+            background: rgba(15, 23, 42, 0.5);
+          }
+
+          td {
+            padding: 14px 16px;
+            border-bottom: 1px solid rgba(99, 102, 241, 0.08);
+            color: #e2e8f0;
+
+            &.col-index {
+              text-align: center;
+              color: #64748b;
+            }
+
+            &.col-name {
+              max-width: 300px;
+              white-space: nowrap;
+              overflow: hidden;
+              text-overflow: ellipsis;
+            }
+
+            &.col-format {
+              .format-tag {
+                display: inline-block;
+                padding: 2px 8px;
+                background: rgba(99, 102, 241, 0.15);
+                border: 1px solid rgba(99, 102, 241, 0.25);
+                border-radius: 4px;
+                font-size: 0.75rem;
+                color: #a5b4fc;
+                font-weight: 500;
+              }
+            }
+
+            &.col-time {
+              color: #94a3b8;
+              font-size: 0.85rem;
+            }
+          }
+
+          &:last-child td {
+            border-bottom: none;
+          }
+        }
+      }
+    }
+  }
+
+  .pagination {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    margin-top: 24px;
+    padding-top: 16px;
+    border-top: 1px solid rgba(99, 102, 241, 0.1);
+
+    .page-btn {
+      width: 36px;
+      height: 36px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(15, 23, 42, 0.6);
+      border: 1px solid rgba(99, 102, 241, 0.2);
+      border-radius: 8px;
+      color: #94a3b8;
+      cursor: pointer;
+      transition: all 0.2s ease;
+
+      svg {
+        width: 16px;
+        height: 16px;
+      }
+
+      &:hover:not(:disabled) {
+        background: rgba(99, 102, 241, 0.15);
+        border-color: rgba(99, 102, 241, 0.4);
+        color: #f8fafc;
+      }
+
+      &:disabled {
+        opacity: 0.4;
+        cursor: not-allowed;
+      }
+    }
+
+    .page-numbers {
+      display: flex;
+      gap: 4px;
+
+      .page-number {
+        min-width: 36px;
+        height: 36px;
+        padding: 0 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: rgba(15, 23, 42, 0.6);
+        border: 1px solid rgba(99, 102, 241, 0.2);
+        border-radius: 8px;
+        color: #94a3b8;
+        font-size: 0.9rem;
+        cursor: pointer;
+        transition: all 0.2s ease;
+
+        &:hover {
+          background: rgba(99, 102, 241, 0.15);
+          border-color: rgba(99, 102, 241, 0.4);
+          color: #f8fafc;
+        }
+
+        &.active {
+          background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+          border-color: #6366f1;
+          color: white;
+        }
+      }
+    }
+
+    .page-info {
+      margin-left: 12px;
+      font-size: 0.85rem;
+      color: #64748b;
+    }
+  }
 }
 
 .modal-overlay {
@@ -705,7 +1281,7 @@ const updatePassword = async () => {
       text-align: center;
       gap: 16px;
 
-      .profile-avatar {
+      .profile-avatar-wrapper .profile-avatar {
         width: 64px;
         height: 64px;
 
