@@ -1,0 +1,17 @@
+.DS_Store
+.idea
+.vscode
+*.local
+node_modules
+dist
+dist-ssr
+__pycache__
+*.pyc
+*.pyo
+*.db
+*.sqlite3
+.coverage
+htmlcov/
+env/
+venv/
+ENV/
