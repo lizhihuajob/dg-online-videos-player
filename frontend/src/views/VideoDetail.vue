@@ -1,11 +1,28 @@
 <template>
   <div class="video-detail-container">
-    <!-- 返回按钮 -->
-    <div class="back-button" @click="goBack">
-      <svg class="back-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <path d="M19 12H5M12 19l-7-7 7-7"/>
-      </svg>
-      <span>返回列表</span>
+    <!-- 顶部导航栏 -->
+    <div class="top-nav glass">
+      <div class="back-button" @click="goBack">
+        <svg class="back-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M19 12H5M12 19l-7-7 7-7"/>
+        </svg>
+        <span>返回列表</span>
+      </div>
+      <div class="nav-actions">
+        <div v-if="currentUser" class="user-area">
+          <div class="user-avatar" @click="goToProfile" title="进入个人中心">
+            <span class="avatar-text">{{ currentUser.username.charAt(0).toUpperCase() }}</span>
+          </div>
+          <span class="username" @click="goToProfile">{{ currentUser.username }}</span>
+        </div>
+        <button v-else class="login-btn" @click="goBack">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+            <circle cx="12" cy="7" r="4"/>
+          </svg>
+          <span>登录</span>
+        </button>
+      </div>
     </div>
 
     <div v-if="loading" class="loading-container">
@@ -131,8 +148,14 @@ const route = useRoute()
 const videos = ref([])
 const loading = ref(true)
 const currentVideo = ref(null)
+const currentUser = ref(null)
 
 onMounted(async () => {
+  const user = localStorage.getItem('current_user')
+  if (user) {
+    currentUser.value = JSON.parse(user)
+  }
+  
   const id = route.params.id
   videos.value = videoData
   
@@ -165,6 +188,10 @@ onMounted(async () => {
 
 const goBack = () => {
   router.push('/')
+}
+
+const goToProfile = () => {
+  router.push('/profile')
 }
 
 const playVideo = (video) => {
@@ -291,6 +318,93 @@ const closeModal = () => {
   background: radial-gradient(ellipse at 20% 0%, #1e1b4b 0%, #0f172a 40%, #020617 100%);
 }
 
+.top-nav {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 20px;
+  background: rgba(30, 41, 59, 0.6);
+  border: 1px solid rgba(99, 102, 241, 0.15);
+  border-radius: 16px;
+  margin-bottom: 24px;
+  backdrop-filter: blur(12px);
+}
+
+.nav-actions {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.user-area {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+
+  .user-avatar {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    box-shadow: 0 2px 8px rgba(99, 102, 241, 0.3);
+
+    &:hover {
+      transform: scale(1.1);
+      box-shadow: 0 4px 12px rgba(99, 102, 241, 0.4);
+    }
+
+    .avatar-text {
+      font-size: 0.9rem;
+      font-weight: 600;
+      color: white;
+    }
+  }
+
+  .username {
+    font-size: 0.95rem;
+    color: #a5b4fc;
+    cursor: pointer;
+    transition: color 0.2s;
+
+    &:hover {
+      color: #f8fafc;
+    }
+  }
+}
+
+.login-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.2) 0%, rgba(139, 92, 246, 0.15) 100%);
+  border: 1px solid rgba(99, 102, 241, 0.3);
+  border-radius: 10px;
+  color: #c7d2fe;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-size: 0.85rem;
+  font-weight: 500;
+
+  &:hover {
+    background: linear-gradient(135deg, rgba(99, 102, 241, 0.3) 0%, rgba(139, 92, 246, 0.25) 100%);
+    border-color: rgba(99, 102, 241, 0.5);
+    color: #f8fafc;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 15px -3px rgba(99, 102, 241, 0.3);
+  }
+
+  svg {
+    width: 18px;
+    height: 18px;
+  }
+}
+
 .back-button {
   display: inline-flex;
   align-items: center;
@@ -304,7 +418,6 @@ const closeModal = () => {
   font-size: 0.9rem;
   cursor: pointer;
   transition: all 0.3s ease;
-  margin-bottom: 20px;
   user-select: none;
   backdrop-filter: blur(10px);
 
@@ -324,11 +437,6 @@ const closeModal = () => {
     width: 18px;
     height: 18px;
   }
-}
-
-.back-icon {
-  width: 20px;
-  height: 20px;
 }
 
 .loading-container,

@@ -12,7 +12,10 @@
             <span>Vision Player</span>
           </div>
           <div class="user-area" v-if="currentUser">
-            <span class="username">{{ currentUser.username }}</span>
+            <div class="user-avatar" @click="goToProfile" title="进入个人中心">
+              <span class="avatar-text">{{ currentUser.username.charAt(0).toUpperCase() }}</span>
+            </div>
+            <span class="username" @click="goToProfile">{{ currentUser.username }}</span>
             <button class="logout-btn" @click="logout" title="退出登录">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/>
@@ -21,8 +24,10 @@
           </div>
           <button v-else class="login-btn" @click="showAuthModal = true" title="登录/注册">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2M16 3.13a4 4 0 0 1 0 7.75M21 21v-2a4 4 0 0 0-3-3.87M16 8a6 6 0 0 1 12 0v4a4 4 0 0 1-3 3.87"/>
+              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+              <circle cx="12" cy="7" r="4"/>
             </svg>
+            <span>登录</span>
           </button>
         </div>
         
@@ -361,9 +366,11 @@
 
 <script setup>
 import { ref, onMounted, computed } from 'vue'
+import { useRouter } from 'vue-router'
 import VideoPlayer from '@/components/VideoPlayer.vue'
+import API_BASE from '@/config/api'
 
-const API_BASE = 'http://localhost:8000'
+const router = useRouter()
 
 const currentUrl = ref('')
 const currentFormat = ref('mp4')
@@ -488,6 +495,10 @@ const logout = () => {
   localStorage.removeItem('current_user')
   onlineHistory.value = []
   localHistory.value = []
+}
+
+const goToProfile = () => {
+  router.push('/profile')
 }
 
 const loadOnlineHistoryFromBackend = async () => {
@@ -916,9 +927,39 @@ const handleModalFileSelect = (e) => {
       align-items: center;
       gap: 8px;
 
+      .user-avatar {
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        box-shadow: 0 2px 8px rgba(99, 102, 241, 0.3);
+
+        &:hover {
+          transform: scale(1.1);
+          box-shadow: 0 4px 12px rgba(99, 102, 241, 0.4);
+        }
+
+        .avatar-text {
+          font-size: 0.85rem;
+          font-weight: 600;
+          color: white;
+        }
+      }
+
       .username {
         font-size: 0.9rem;
         color: #a5b4fc;
+        cursor: pointer;
+        transition: color 0.2s;
+
+        &:hover {
+          color: #f8fafc;
+        }
       }
 
       .logout-btn {
@@ -947,22 +988,25 @@ const handleModalFileSelect = (e) => {
     }
 
     .login-btn {
-      width: 32px;
-      height: 32px;
       display: flex;
       align-items: center;
-      justify-content: center;
-      background: rgba(99, 102, 241, 0.1);
-      border: 1px solid rgba(99, 102, 241, 0.2);
-      border-radius: 8px;
-      color: #a5b4fc;
+      gap: 8px;
+      padding: 8px 16px;
+      background: linear-gradient(135deg, rgba(99, 102, 241, 0.2) 0%, rgba(139, 92, 246, 0.15) 100%);
+      border: 1px solid rgba(99, 102, 241, 0.3);
+      border-radius: 10px;
+      color: #c7d2fe;
       cursor: pointer;
-      transition: all 0.2s;
+      transition: all 0.3s ease;
+      font-size: 0.85rem;
+      font-weight: 500;
 
       &:hover {
-        background: rgba(99, 102, 241, 0.2);
-        border-color: #6366f1;
+        background: linear-gradient(135deg, rgba(99, 102, 241, 0.3) 0%, rgba(139, 92, 246, 0.25) 100%);
+        border-color: rgba(99, 102, 241, 0.5);
         color: #f8fafc;
+        transform: translateY(-1px);
+        box-shadow: 0 4px 15px -3px rgba(99, 102, 241, 0.3);
       }
 
       svg {
