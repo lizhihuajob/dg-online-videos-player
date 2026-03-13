@@ -1,6 +1,5 @@
 <template>
   <div class="profile-container">
-    <!-- Header -->
     <header class="profile-header">
       <div class="header-content">
         <div class="back-button" @click="goBack">
@@ -15,11 +14,20 @@
     </header>
 
     <div class="profile-content">
-      <!-- User Info Card -->
       <div class="profile-card glass">
         <div class="user-profile-header">
-          <div class="profile-avatar">
-            <span class="avatar-text">{{ userInitial }}</span>
+          <div class="profile-avatar-wrapper">
+            <div class="profile-avatar" @click="triggerAvatarUpload" title="点击更换头像">
+              <img v-if="currentUser?.avatar" :src="getAvatarUrl(currentUser.avatar)" alt="头像" class="avatar-image" />
+              <span v-else class="avatar-text">{{ userInitial }}</span>
+            </div>
+            <div class="avatar-upload-overlay" @click="triggerAvatarUpload">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+                <circle cx="12" cy="13" r="4"/>
+              </svg>
+            </div>
+            <input type="file" ref="avatarInput" @change="handleAvatarUpload" accept="image/*" hidden />
           </div>
           <div class="profile-info">
             <h2 class="profile-name">{{ currentUser?.username }}</h2>
@@ -29,7 +37,6 @@
         </div>
       </div>
 
-      <!-- Tabs -->
       <div class="profile-tabs">
         <button 
           class="tab-btn" 
@@ -53,9 +60,19 @@
           </svg>
           修改密码
         </button>
+        <button 
+          class="tab-btn" 
+          :class="{ active: activeTab === 'logs' }"
+          @click="activeTab = 'logs'"
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"/>
+            <polyline points="12 6 12 12 16 14"/>
+          </svg>
+          播放日志
+        </button>
       </div>
 
-      <!-- Info Tab Content -->
       <div v-if="activeTab === 'info'" class="tab-content glass">
         <h3 class="section-title">编辑个人信息</h3>
         <div class="form-group">
@@ -88,7 +105,6 @@
         </div>
       </div>
 
-      <!-- Password Tab Content -->
       <div v-if="activeTab === 'password'" class="tab-content glass">
         <h3 class="section-title">修改密码</h3>
         <div class="form-group">
@@ -129,24 +145,99 @@
           </button>
         </div>
       </div>
+
+      <div v-if="activeTab === 'logs'" class="tab-content glass">
+        <div class="logs-header">
+          <h3 class="section-title">播放日志</h3>
+          <div class="search-box">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="11" cy="11" r="8"/>
+              <path d="M21 21l-4.35-4.35"/>
+            </svg>
+            <input 
+              type="text" 
+              v-model="searchKeyword" 
+              placeholder="搜索视频名称..."
+              @input="handleSearch"
+            >
+          </div>
+        </div>
+        <div v-if="filteredLogs.length === 0" class="empty-logs">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <circle cx="12" cy="12" r="10"/>
+            <polyline points="12 6 12 12 16 14"/>
+          </svg>
+          <p>{{ searchKeyword ? '未找到匹配的记录' : '暂无播放记录' }}</p>
+        </div>
+        <div v-else class="logs-table-container">
+          <table class="logs-table">
+            <thead>
+              <tr>
+                <th class="col-index">序号</th>
+                <th class="col-name">视频名称</th>
+                <th class="col-format">格式</th>
+                <th class="col-time">播放时间</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="(log, index) in paginatedLogs" :key="log.id">
+                <td class="col-index">{{ (currentPage - 1) * pageSize + index + 1 }}</td>
+                <td class="col-name" :title="log.video_name">{{ log.video_name }}</td>
+                <td class="col-format">
+                  <span class="format-tag">{{ log.video_format?.toUpperCase() || '-' }}</span>
+                </td>
+                <td class="col-time">{{ formatDateTime(log.play_time) }}</td>
+              </tr>
+            </tbody>
+          </table>
+          <div class="pagination" v-if="totalPages > 1">
+            <button 
+              class="page-btn" 
+              :disabled="currentPage === 1"
+              @click="currentPage = 1"
+            >
+              首页
+            </button>
+            <button 
+              class="page-btn" 
+              :disabled="currentPage === 1"
+              @click="currentPage--"
+            >
+              上一页
+            </button>
+            <div class="page-info">
+              <span>第 {{ currentPage }} / {{ totalPages }} 页</span>
+              <span class="total-count">共 {{ filteredLogs.length }} 条</span>
+            </div>
+            <button 
+              class="page-btn" 
+              :disabled="currentPage === totalPages"
+              @click="currentPage++"
+            >
+              下一页
+            </button>
+            <button 
+              class="page-btn" 
+              :disabled="currentPage === totalPages"
+              @click="currentPage = totalPages"
+            >
+              末页
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
 
-    <!-- Success Modal -->
     <div v-if="showSuccess" class="modal-overlay" @click="showSuccess = false">
       <div class="modal-card glass" @click.stop>
         <div class="modal-header">
-          <svg class="success-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <circle cx="12" cy="12" r="10"/>
-            <path d="M9 12l2 2 4-4"/>
-          </svg>
-          <h3>操作成功</h3>
+          <h3>{{ successTitle }}</h3>
         </div>
         <p>{{ successMessage }}</p>
         <button class="modal-btn" @click="showSuccess = false">确定</button>
       </div>
     </div>
 
-    <!-- Error Modal -->
     <div v-if="showError" class="modal-overlay" @click="showError = false">
       <div class="modal-card glass" @click.stop>
         <div class="modal-header">
@@ -177,8 +268,14 @@ const activeTab = ref('info')
 const isUpdating = ref(false)
 const showSuccess = ref(false)
 const showError = ref(false)
+const successTitle = ref('操作成功')
 const successMessage = ref('')
 const errorMessage = ref('')
+const avatarInput = ref(null)
+const playLogs = ref([])
+const searchKeyword = ref('')
+const currentPage = ref(1)
+const pageSize = ref(10)
 
 const profileForm = ref({
   username: '',
@@ -207,6 +304,30 @@ const isPasswordFormValid = computed(() => {
          passwordForm.value.newPassword === passwordForm.value.confirmPassword
 })
 
+const filteredLogs = computed(() => {
+  if (!searchKeyword.value.trim()) {
+    return playLogs.value
+  }
+  const keyword = searchKeyword.value.toLowerCase().trim()
+  return playLogs.value.filter(log => 
+    log.video_name?.toLowerCase().includes(keyword)
+  )
+})
+
+const totalPages = computed(() => {
+  return Math.ceil(filteredLogs.value.length / pageSize.value) || 1
+})
+
+const paginatedLogs = computed(() => {
+  const start = (currentPage.value - 1) * pageSize.value
+  const end = start + pageSize.value
+  return filteredLogs.value.slice(start, end)
+})
+
+const handleSearch = () => {
+  currentPage.value = 1
+}
+
 onMounted(() => {
   const token = localStorage.getItem('access_token')
   const user = localStorage.getItem('current_user')
@@ -215,6 +336,7 @@ onMounted(() => {
     currentUser.value = JSON.parse(user)
     profileForm.value.username = currentUser.value.username
     profileForm.value.email = currentUser.value.email
+    loadPlayLogs()
   } else {
     router.push('/')
   }
@@ -237,8 +359,82 @@ const apiRequest = async (endpoint, options = {}) => {
   return response
 }
 
+const getAvatarUrl = (avatar) => {
+  if (!avatar) return null
+  if (avatar.startsWith('http')) return avatar
+  return `${API_BASE}${avatar}`
+}
+
 const goBack = () => {
   router.push('/')
+}
+
+const triggerAvatarUpload = () => {
+  avatarInput.value?.click()
+}
+
+const handleAvatarUpload = async (e) => {
+  const file = e.target.files[0]
+  if (!file) return
+
+  if (!file.type.startsWith('image/')) {
+    errorMessage.value = '请选择图片文件'
+    showError.value = true
+    return
+  }
+
+  isUpdating.value = true
+  try {
+    const formData = new FormData()
+    formData.append('file', file)
+    
+    const response = await apiRequest('/users/me/avatar', {
+      method: 'POST',
+      body: formData
+    })
+
+    if (response.ok) {
+      const data = await response.json()
+      currentUser.value = { ...currentUser.value, avatar: data.avatar }
+      localStorage.setItem('current_user', JSON.stringify(currentUser.value))
+      successTitle.value = '头像更新成功'
+      successMessage.value = '头像已成功更新'
+      showSuccess.value = true
+    } else {
+      const error = await response.json()
+      errorMessage.value = error.detail || '头像上传失败'
+      showError.value = true
+    }
+  } catch (err) {
+    errorMessage.value = '网络错误，请稍后重试'
+    showError.value = true
+  } finally {
+    isUpdating.value = false
+    e.target.value = ''
+  }
+}
+
+const loadPlayLogs = async () => {
+  try {
+    const response = await apiRequest('/play-logs')
+    if (response.ok) {
+      playLogs.value = await response.json()
+    }
+  } catch (err) {
+    console.error('Failed to load play logs:', err)
+  }
+}
+
+const formatDateTime = (dateStr) => {
+  if (!dateStr) return ''
+  const date = new Date(dateStr)
+  return date.toLocaleString('zh-CN', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit'
+  })
 }
 
 const updateProfile = async () => {
@@ -260,8 +456,9 @@ const updateProfile = async () => {
 
     if (response.ok) {
       const updatedUser = await response.json()
-      currentUser.value = updatedUser
-      localStorage.setItem('current_user', JSON.stringify(updatedUser))
+      currentUser.value = { ...currentUser.value, ...updatedUser }
+      localStorage.setItem('current_user', JSON.stringify(currentUser.value))
+      successTitle.value = '更新成功'
       successMessage.value = '个人信息更新成功'
       showSuccess.value = true
     } else {
@@ -301,6 +498,7 @@ const updatePassword = async () => {
     })
 
     if (response.ok) {
+      successTitle.value = '密码修改成功'
       successMessage.value = '密码修改成功，请使用新密码重新登录'
       showSuccess.value = true
       passwordForm.value = {
@@ -405,20 +603,60 @@ const updatePassword = async () => {
     align-items: center;
     gap: 24px;
 
-    .profile-avatar {
-      width: 80px;
-      height: 80px;
-      border-radius: 50%;
-      background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      box-shadow: 0 4px 20px rgba(99, 102, 241, 0.4);
+    .profile-avatar-wrapper {
+      position: relative;
+      cursor: pointer;
 
-      .avatar-text {
-        color: white;
-        font-size: 2rem;
-        font-weight: 700;
+      .profile-avatar {
+        width: 80px;
+        height: 80px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 4px 20px rgba(99, 102, 241, 0.4);
+        overflow: hidden;
+        transition: all 0.3s ease;
+
+        .avatar-image {
+          width: 100%;
+          height: 100%;
+          object-fit: cover;
+        }
+
+        .avatar-text {
+          color: white;
+          font-size: 2rem;
+          font-weight: 700;
+        }
+      }
+
+      .avatar-upload-overlay {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 80px;
+        height: 80px;
+        border-radius: 50%;
+        background: rgba(0, 0, 0, 0.6);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        opacity: 0;
+        transition: opacity 0.3s ease;
+
+        svg {
+          width: 24px;
+          height: 24px;
+          color: white;
+        }
+      }
+
+      &:hover {
+        .avatar-upload-overlay {
+          opacity: 1;
+        }
       }
     }
 
@@ -587,6 +825,198 @@ const updatePassword = async () => {
   }
 }
 
+.empty-logs {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 40px 20px;
+  color: #64748b;
+
+  svg {
+    width: 48px;
+    height: 48px;
+    margin-bottom: 16px;
+    opacity: 0.5;
+  }
+
+  p {
+    font-size: 0.95rem;
+  }
+}
+
+.logs-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  gap: 16px;
+  flex-wrap: wrap;
+
+  .section-title {
+    margin-bottom: 0;
+    padding-bottom: 0;
+    border-bottom: none;
+  }
+
+  .search-box {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 14px;
+    background: rgba(15, 23, 42, 0.6);
+    border: 1px solid rgba(99, 102, 241, 0.2);
+    border-radius: 10px;
+    transition: all 0.25s ease;
+
+    &:focus-within {
+      border-color: rgba(99, 102, 241, 0.5);
+      box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+    }
+
+    svg {
+      width: 18px;
+      height: 18px;
+      color: #64748b;
+      flex-shrink: 0;
+    }
+
+    input {
+      background: transparent;
+      border: none;
+      outline: none;
+      color: #f8fafc;
+      font-size: 0.9rem;
+      width: 180px;
+
+      &::placeholder {
+        color: #475569;
+      }
+    }
+  }
+}
+
+.logs-table-container {
+  overflow: hidden;
+
+  .logs-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.9rem;
+
+    thead {
+      tr {
+        background: rgba(99, 102, 241, 0.1);
+      }
+
+      th {
+        padding: 12px 16px;
+        text-align: left;
+        font-weight: 600;
+        color: #a5b4fc;
+        border-bottom: 1px solid rgba(99, 102, 241, 0.2);
+        white-space: nowrap;
+      }
+    }
+
+    tbody {
+      tr {
+        transition: background 0.2s ease;
+
+        &:hover {
+          background: rgba(99, 102, 241, 0.05);
+        }
+      }
+
+      td {
+        padding: 14px 16px;
+        color: #e2e8f0;
+        border-bottom: 1px solid rgba(99, 102, 241, 0.08);
+      }
+    }
+
+    .col-index {
+      width: 60px;
+      text-align: center;
+      color: #64748b;
+    }
+
+    .col-name {
+      max-width: 300px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .col-format {
+      width: 80px;
+      text-align: center;
+
+      .format-tag {
+        display: inline-block;
+        padding: 3px 8px;
+        background: rgba(99, 102, 241, 0.15);
+        border-radius: 4px;
+        color: #a5b4fc;
+        font-weight: 500;
+        font-size: 0.8rem;
+      }
+    }
+
+    .col-time {
+      width: 160px;
+      color: #94a3b8;
+      font-size: 0.85rem;
+    }
+  }
+}
+
+.pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid rgba(99, 102, 241, 0.1);
+
+  .page-btn {
+    padding: 8px 14px;
+    background: rgba(99, 102, 241, 0.1);
+    border: 1px solid rgba(99, 102, 241, 0.2);
+    border-radius: 8px;
+    color: #a5b4fc;
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+
+    &:hover:not(:disabled) {
+      background: rgba(99, 102, 241, 0.2);
+      border-color: rgba(99, 102, 241, 0.4);
+      color: #f8fafc;
+    }
+
+    &:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+  }
+
+  .page-info {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 0 16px;
+    font-size: 0.85rem;
+    color: #94a3b8;
+
+    .total-count {
+      font-size: 0.75rem;
+      color: #64748b;
+      margin-top: 2px;
+    }
+  }
+}
+
 .modal-overlay {
   position: fixed;
   top: 0;
@@ -613,14 +1043,6 @@ const updatePassword = async () => {
 
   .modal-header {
     margin-bottom: 20px;
-
-    .success-icon {
-      width: 48px;
-      height: 48px;
-      color: #10b981;
-      margin: 0 auto 15px;
-      filter: drop-shadow(0 0 10px rgba(16, 185, 129, 0.3));
-    }
 
     .error-icon {
       width: 48px;
@@ -705,11 +1127,14 @@ const updatePassword = async () => {
       text-align: center;
       gap: 16px;
 
-      .profile-avatar {
-        width: 64px;
-        height: 64px;
+      .profile-avatar-wrapper {
+        .profile-avatar,
+        .avatar-upload-overlay {
+          width: 64px;
+          height: 64px;
+        }
 
-        .avatar-text {
+        .profile-avatar .avatar-text {
           font-size: 1.5rem;
         }
       }
