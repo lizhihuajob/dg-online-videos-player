@@ -42,95 +42,53 @@
         </div>
 
         <div class="history-sidebar-content">
-          <!-- 在线视频历史 -->
+          <!-- 统一播放列表 -->
           <div class="history-section">
-            <div class="section-header" @click="toggleOnlineHistory">
+            <div class="section-header" @click="togglePlaylist">
               <div class="section-title-wrapper">
-                <svg class="section-icon" :class="{ 'collapsed': !isOnlineHistoryOpen }" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
-                  <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
+                <svg class="section-icon" :class="{ 'collapsed': !isPlaylistOpen }" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <line x1="8" y1="6" x2="21" y2="6"/>
+                  <line x1="8" y1="12" x2="21" y2="12"/>
+                  <line x1="8" y1="18" x2="21" y2="18"/>
+                  <line x1="3" y1="6" x2="3.01" y2="6"/>
+                  <line x1="3" y1="12" x2="3.01" y2="12"/>
+                  <line x1="3" y1="18" x2="3.01" y2="18"/>
                 </svg>
-                <span class="section-title-text">在线视频</span>
-                <span class="section-count" v-if="onlineHistory.length > 0">({{ onlineHistory.length }})</span>
+                <span class="section-title-text">播放列表</span>
+                <span class="section-count" v-if="playlist.length > 0">({{ playlist.length }})</span>
               </div>
-              <button v-if="onlineHistory.length > 0 && isOnlineHistoryOpen" class="clear-history" @click.stop="clearOnlineHistory">清除</button>
+              <button v-if="playlist.length > 0 && isPlaylistOpen" class="clear-history" @click.stop="clearPlaylist">清除</button>
             </div>
             
-            <div v-show="isOnlineHistoryOpen" class="history-list-wrapper">
-              <div v-if="onlineHistory.length === 0" class="empty-history">
-                <p>暂无在线播放记录</p>
+            <div v-show="isPlaylistOpen" class="history-list-wrapper">
+              <div v-if="playlist.length === 0" class="empty-history">
+                <p>暂无播放记录</p>
               </div>
               
               <div class="history-sidebar-list">
                 <div 
-                  v-for="(item, index) in onlineHistory" 
-                  :key="'online-' + item.id" 
+                  v-for="(item, index) in playlist" 
+                  :key="item.key" 
                   class="history-sidebar-item"
-                  :class="{ 'is-active': currentUrl === item.video_url }"
-                  @dblclick="playOnlineHistoryItem(item)"
+                  :class="{ 
+                    'is-active': currentUrl === item.url, 
+                    'is-local': item.isLocal,
+                    'is-expired': item.isLocal && item.sid !== sessionId 
+                  }"
+                  @dblclick="playPlaylistItem(item, index)"
                   title="双击播放"
                 >
                   <div class="item-info">
                     <div class="name-wrapper">
-                      <span class="item-name">{{ item.video_name || item.video_url }}</span>
-                    </div>
-                    <span class="item-time">{{ formatTime(item.created_at) }}</span>
-                  </div>
-                  <div class="item-actions">
-                    <button class="delete-item-btn" @click.stop="removeOnlineHistoryItem(item)" title="删除记录">
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M18 6L6 18M6 6l12 12"/>
-                      </svg>
-                    </button>
-                    <div class="play-indicator">
-                      <svg viewBox="0 0 24 24" fill="currentColor">
-                        <path d="M8 5v14l11-7z"/>
-                      </svg>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- 本地视频历史 -->
-          <div class="history-section">
-            <div class="section-header" @click="toggleLocalHistory">
-              <div class="section-title-wrapper">
-                <svg class="section-icon" :class="{ 'collapsed': !isLocalHistoryOpen }" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/>
-                </svg>
-                <span class="section-title-text">本地视频</span>
-                <span class="section-count" v-if="localHistory.length > 0">({{ localHistory.length }})</span>
-              </div>
-              <button v-if="localHistory.length > 0 && isLocalHistoryOpen" class="clear-history" @click.stop="clearLocalHistory">清除</button>
-            </div>
-            
-            <div v-show="isLocalHistoryOpen" class="history-list-wrapper">
-              <div v-if="localHistory.length === 0" class="empty-history">
-                <p>暂无本地播放记录</p>
-              </div>
-              
-              <div class="history-sidebar-list">
-                <div 
-                  v-for="(item, index) in localHistory" 
-                  :key="'local-' + (item.id || index)" 
-                  class="history-sidebar-item is-local"
-                  :class="{ 'is-active': currentUrl === item.url, 'is-expired': item.sid !== sessionId }"
-                  @dblclick="playLocalHistoryItem(item, index)"
-                  title="双击播放"
-                >
-                  <div class="item-info">
-                    <div class="name-wrapper">
-                      <span class="local-tag" :class="{ 'is-expired': item.sid !== sessionId }">
-                        {{ item.sid === sessionId ? '本地' : '需重新上传' }}
+                      <span class="video-type-tag" :class="{ 'is-local': item.isLocal, 'is-expired': item.isLocal && item.sid !== sessionId }">
+                        {{ item.isLocal ? (item.sid === sessionId ? '本地' : '需重新上传') : '在线' }}
                       </span>
-                      <span class="item-name">{{ item.video_name || item.name }}</span>
+                      <span class="item-name">{{ item.name }}</span>
                     </div>
-                    <span class="item-time">{{ formatTime(item.timestamp || item.created_at) }}</span>
+                    <span class="item-time">{{ formatTime(item.timestamp) }}</span>
                   </div>
                   <div class="item-actions">
-                    <button class="delete-item-btn" @click.stop="removeLocalHistoryItem(item, index)" title="删除记录">
+                    <button class="delete-item-btn" @click.stop="removePlaylistItem(item, index)" title="删除记录">
                       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <path d="M18 6L6 18M6 6l12 12"/>
                       </svg>
@@ -392,9 +350,37 @@ const sessionId = Math.random().toString(36).substring(7)
 const pendingReuploadIndex = ref(-1)
 const fileInput = ref(null)
 
-// 折叠状态
-const isOnlineHistoryOpen = ref(true)
-const isLocalHistoryOpen = ref(true)
+const isPlaylistOpen = ref(true)
+
+const playlist = computed(() => {
+  const onlineItems = onlineHistory.value.map(item => ({
+    key: 'online-' + item.id,
+    id: item.id,
+    name: item.video_name || item.video_url,
+    url: item.video_url,
+    format: item.video_format,
+    timestamp: new Date(item.created_at).getTime(),
+    isLocal: false,
+    sid: null,
+    fileInfo: null
+  }))
+  
+  const localItems = localHistory.value.map((item, index) => ({
+    key: 'local-' + (item.id || index),
+    id: item.id,
+    name: item.video_name || item.name,
+    url: item.url,
+    format: item.name ? item.name.split('.').pop().toLowerCase() : 'mp4',
+    timestamp: item.timestamp || new Date(item.created_at).getTime(),
+    isLocal: true,
+    sid: item.sid,
+    fileInfo: item.fileInfo
+  }))
+  
+  const allItems = [...onlineItems, ...localItems]
+  allItems.sort((a, b) => b.timestamp - a.timestamp)
+  return allItems
+})
 
 const showAuthModal = ref(false)
 const isLoginMode = ref(true)
@@ -578,13 +564,44 @@ const loadHistoryFromBackend = async () => {
   await loadLocalHistoryFromBackend()
 }
 
-// 折叠/展开切换
-const toggleOnlineHistory = () => {
-  isOnlineHistoryOpen.value = !isOnlineHistoryOpen.value
+const togglePlaylist = () => {
+  isPlaylistOpen.value = !isPlaylistOpen.value
 }
 
-const toggleLocalHistory = () => {
-  isLocalHistoryOpen.value = !isLocalHistoryOpen.value
+const clearPlaylist = async () => {
+  await clearOnlineHistory()
+  await clearLocalHistory()
+}
+
+const removePlaylistItem = async (item, index) => {
+  if (item.isLocal) {
+    const localIndex = localHistory.value.findIndex(h => 
+      (h.id && h.id === item.id) || h.timestamp === item.timestamp
+    )
+    if (localIndex > -1) {
+      await removeLocalHistoryItem(localHistory.value[localIndex], localIndex)
+    }
+  } else {
+    const onlineItem = onlineHistory.value.find(h => h.id === item.id)
+    if (onlineItem) {
+      await removeOnlineHistoryItem(onlineItem)
+    }
+  }
+}
+
+const playPlaylistItem = (item, index) => {
+  if (item.isLocal) {
+    if (item.sid !== sessionId) {
+      pendingReuploadIndex.value = index
+      fileInput.value.click()
+      return
+    }
+    currentUrl.value = item.url
+    currentFormat.value = item.format
+  } else {
+    currentUrl.value = item.url
+    currentFormat.value = item.format || getFormat(item.url)
+  }
 }
 
 const addToHistory = async (url, name = '', fileInfo = null) => {
@@ -1189,14 +1206,19 @@ const handleModalFileSelect = (e) => {
         min-width: 0;
       }
 
-      .local-tag {
+      .video-type-tag {
         font-size: 10px;
         padding: 1px 4px;
-        background: rgba(99, 102, 241, 0.2);
-        color: #a5b4fc;
+        background: rgba(16, 185, 129, 0.2);
+        color: #6ee7b7;
         border-radius: 4px;
         flex-shrink: 0;
         font-weight: 600;
+
+        &.is-local {
+          background: rgba(99, 102, 241, 0.2);
+          color: #a5b4fc;
+        }
 
         &.is-expired {
           background: rgba(244, 63, 94, 0.1);
