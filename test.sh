@@ -22,7 +22,11 @@ echo ""
 echo "🧪 运行后端测试..."
 echo "----------------------------------------"
 cd "$PROJECT_ROOT/backend"
-$PYTHON_CMD -m pytest -v --tb=short -q -W ignore::DeprecationWarning 2>&1
+
+# 使用内存数据库运行测试，避免数据库锁定问题
+export DATABASE_URL="sqlite:///:memory:"
+
+$PYTHON_CMD -m pytest tests/ -v --tb=short -q -W ignore::DeprecationWarning 2>&1
 TEST_RESULT=$?
 
 echo ""
