@@ -14,6 +14,23 @@ from . import models, database, auth
 
 models.Base.metadata.create_all(bind=database.engine)
 
+def init_admin_user(db: Session):
+    admin = db.query(models.User).filter(models.User.username == "admin").first()
+    if not admin:
+        hashed_password = auth.get_password_hash("123456")
+        admin_user = models.User(
+            username="admin",
+            email="admin@example.com",
+            hashed_password=hashed_password
+        )
+        db.add(admin_user)
+        db.commit()
+        db.refresh(admin_user)
+
+db = database.SessionLocal()
+init_admin_user(db)
+db.close()
+
 app = FastAPI(title="Video Player API")
 
 UPLOAD_DIR = "/app/uploads"
@@ -40,6 +57,30 @@ class UserResponse(BaseModel):
     id: int
     username: str
     email: str
+    avatar: str
+
+    class Config:
+        from_attributes = True
+
+class VideoCreate(BaseModel):
+    filename: str
+    name: str
+    url: str
+    format: str
+    size: int = 0
+
+class VideoUpdate(BaseModel):
+    name: str
+
+class VideoResponse(BaseModel):
+    id: int
+    user_id: int
+    filename: str
+    name: str
+    url: str
+    format: str
+    size: int
+    created_at: str
 
     class Config:
         from_attributes = True
@@ -97,26 +138,6 @@ async def get_current_user(token: str = Depends(oauth2_scheme), db: Session = De
         raise credentials_exception
     return user
 
-@app.post("/register", response_model=UserResponse)
-def register(user: UserCreate, db: Session = Depends(database.get_db)):
-    db_user = db.query(models.User).filter(models.User.username == user.username).first()
-    if db_user:
-        raise HTTPException(status_code=400, detail="Username already registered")
-    db_email = db.query(models.User).filter(models.User.email == user.email).first()
-    if db_email:
-        raise HTTPException(status_code=400, detail="Email already registered")
-    
-    hashed_password = auth.get_password_hash(user.password)
-    new_user = models.User(
-        username=user.username,
-        email=user.email,
-        hashed_password=hashed_password
-    )
-    db.add(new_user)
-    db.commit()
-    db.refresh(new_user)
-    return new_user
-
 @app.post("/token", response_model=Token)
 def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(database.get_db)):
     user = db.query(models.User).filter(models.User.username == form_data.username).first()
@@ -136,7 +157,8 @@ def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depend
         "user": {
             "id": user.id,
             "username": user.username,
-            "email": user.email
+            "email": user.email,
+            "avatar": user.avatar
         }
     }
 
@@ -376,7 +398,8 @@ def clear_local_play_history(
 @app.post("/upload")
 async def upload_video(
     file: UploadFile = File(...),
-    current_user: models.User = Depends(get_current_user)
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(database.get_db)
 ):
     if not file.content_type or not file.content_type.startswith("video/"):
         raise HTTPException(status_code=400, detail="File must be a video")
@@ -388,11 +411,129 @@ async def upload_video(
     with open(file_path, "wb") as buffer:
         shutil.copyfileobj(file.file, buffer)
     
-    return {
-        "filename": file.filename,
-        "url": f"/uploads/{unique_filename}",
-        "format": file_ext.lstrip(".")
-    }
+    file_size = os.path.getsize(file_path)
+    original_name = file.filename or "unknown"
+    display_name = os.path.splitext(original_name)[0]
+    
+    new_video = models.Video(
+        user_id=current_user.id,
+        filename=original_name,
+        name=display_name,
+        url=f"/uploads/{unique_filename}",
+        format=file_ext.lstrip("."),
+        size=file_size
+    )
+    db.add(new_video)
+    db.commit()
+    db.refresh(new_video)
+    
+    return VideoResponse(
+        id=new_video.id,
+        user_id=new_video.user_id,
+        filename=new_video.filename,
+        name=new_video.name,
+        url=new_video.url,
+        format=new_video.format,
+        size=new_video.size,
+        created_at=new_video.created_at.isoformat() if new_video.created_at else ""
+    )
+
+@app.post("/upload-avatar")
+async def upload_avatar(
+    file: UploadFile = File(...),
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(database.get_db)
+):
+    if not file.content_type or not file.content_type.startswith("image/"):
+        raise HTTPException(status_code=400, detail="File must be an image")
+    
+    file_ext = os.path.splitext(file.filename)[1] if file.filename else ".png"
+    unique_filename = f"avatar_{uuid.uuid4()}{file_ext}"
+    file_path = os.path.join(UPLOAD_DIR, unique_filename)
+    
+    with open(file_path, "wb") as buffer:
+        shutil.copyfileobj(file.file, buffer)
+    
+    avatar_url = f"/uploads/{unique_filename}"
+    current_user.avatar = avatar_url
+    db.commit()
+    
+    return {"avatar": avatar_url}
+
+@app.get("/videos", response_model=List[VideoResponse])
+def get_videos(
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(database.get_db)
+):
+    videos = db.query(models.Video).filter(
+        models.Video.user_id == current_user.id
+    ).order_by(models.Video.created_at.desc()).all()
+    
+    response = []
+    for video in videos:
+        response.append(VideoResponse(
+            id=video.id,
+            user_id=video.user_id,
+            filename=video.filename,
+            name=video.name,
+            url=video.url,
+            format=video.format,
+            size=video.size,
+            created_at=video.created_at.isoformat() if video.created_at else ""
+        ))
+    return response
+
+@app.put("/videos/{video_id}", response_model=VideoResponse)
+def update_video(
+    video_id: int,
+    video_update: VideoUpdate,
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(database.get_db)
+):
+    video = db.query(models.Video).filter(
+        models.Video.id == video_id,
+        models.Video.user_id == current_user.id
+    ).first()
+    
+    if not video:
+        raise HTTPException(status_code=404, detail="Video not found")
+    
+    video.name = video_update.name
+    db.commit()
+    db.refresh(video)
+    
+    return VideoResponse(
+        id=video.id,
+        user_id=video.user_id,
+        filename=video.filename,
+        name=video.name,
+        url=video.url,
+        format=video.format,
+        size=video.size,
+        created_at=video.created_at.isoformat() if video.created_at else ""
+    )
+
+@app.delete("/videos/{video_id}")
+def delete_video(
+    video_id: int,
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(database.get_db)
+):
+    video = db.query(models.Video).filter(
+        models.Video.id == video_id,
+        models.Video.user_id == current_user.id
+    ).first()
+    
+    if not video:
+        raise HTTPException(status_code=404, detail="Video not found")
+    
+    file_path = os.path.join(UPLOAD_DIR, os.path.basename(video.url))
+    if os.path.exists(file_path):
+        os.remove(file_path)
+    
+    db.delete(video)
+    db.commit()
+    return {"message": "Video deleted successfully"}
 
 @app.get("/")
 def root():
