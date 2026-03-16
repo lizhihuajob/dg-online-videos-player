@@ -10,10 +10,12 @@ class User(Base):
     username = Column(String(50), unique=True, index=True)
     email = Column(String(100), unique=True, index=True)
     hashed_password = Column(String(255))
+    avatar = Column(String(500), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     play_history = relationship("PlayHistory", back_populates="user", cascade="all, delete-orphan")
     local_play_history = relationship("LocalPlayHistory", back_populates="user", cascade="all, delete-orphan")
+    videos = relationship("Video", back_populates="user", cascade="all, delete-orphan")
 
 
 class PlayHistory(Base):
@@ -40,3 +42,18 @@ class LocalPlayHistory(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     user = relationship("User", back_populates="local_play_history")
+
+
+class Video(Base):
+    __tablename__ = "videos"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"))
+    name = Column(String(255))
+    filename = Column(String(255))
+    url = Column(Text)
+    format = Column(String(10))
+    size = Column(Integer, nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    user = relationship("User", back_populates="videos")
