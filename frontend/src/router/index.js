@@ -1,24 +1,38 @@
 import { createRouter, createWebHistory } from 'vue-router'
-import VideoList from '@/views/VideoList.vue'
-import VideoDetail from '@/views/VideoDetail.vue'
+import { useAuthStore } from '@/stores/auth.js'
+import Login from '@/views/Login.vue'
+import AdminLayout from '@/layouts/AdminLayout.vue'
+import VideoManagement from '@/views/VideoManagement.vue'
+import PlayHistory from '@/views/PlayHistory.vue'
 import Profile from '@/views/Profile.vue'
 
 const routes = [
   {
+    path: '/login',
+    name: 'Login',
+    component: Login,
+    meta: { public: true }
+  },
+  {
     path: '/',
-    name: 'VideoList',
-    component: VideoList
-  },
-  {
-    path: '/video/:id',
-    name: 'VideoDetail',
-    component: VideoDetail
-  },
-  {
-    path: '/profile',
-    name: 'Profile',
-    component: Profile,
-    meta: { requiresAuth: true }
+    component: AdminLayout,
+    children: [
+      {
+        path: '',
+        name: 'VideoManagement',
+        component: VideoManagement
+      },
+      {
+        path: '/history',
+        name: 'PlayHistory',
+        component: PlayHistory
+      },
+      {
+        path: '/profile',
+        name: 'Profile',
+        component: Profile
+      }
+    ]
   }
 ]
 
@@ -27,15 +41,21 @@ const router = createRouter({
   routes
 })
 
-// Navigation guard for protected routes
+// Navigation guard
 router.beforeEach((to, from, next) => {
-  if (to.meta.requiresAuth) {
-    const token = localStorage.getItem('access_token')
-    if (!token) {
-      next('/')
-    } else {
-      next()
-    }
+  const authStore = useAuthStore()
+
+  // Initialize auth state
+  if (!authStore.isLoggedIn) {
+    authStore.init()
+  }
+
+  // Redirect to login if not authenticated
+  if (!to.meta.public && !authStore.isLoggedIn) {
+    next('/login')
+  } else if (to.path === '/login' && authStore.isLoggedIn) {
+    // Redirect to home if already logged in
+    next('/')
   } else {
     next()
   }

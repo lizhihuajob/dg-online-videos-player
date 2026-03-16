@@ -30,7 +30,7 @@ body {
   min-height: 100vh;
 }
 
-/* 全局滚动条样式 */
+/* Global scrollbar styles */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
@@ -49,7 +49,7 @@ body {
   background: rgba(99, 102, 241, 0.35);
 }
 
-/* 选中文本样式 */
+/* Text selection styles */
 ::selection {
   background: rgba(99, 102, 241, 0.3);
   color: #f8fafc;
