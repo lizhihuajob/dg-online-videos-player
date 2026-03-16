@@ -10,10 +10,27 @@ class User(Base):
     username = Column(String(50), unique=True, index=True)
     email = Column(String(100), unique=True, index=True)
     hashed_password = Column(String(255))
+    avatar = Column(String(255), default="")
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     play_history = relationship("PlayHistory", back_populates="user", cascade="all, delete-orphan")
     local_play_history = relationship("LocalPlayHistory", back_populates="user", cascade="all, delete-orphan")
+    videos = relationship("Video", back_populates="user", cascade="all, delete-orphan")
+
+
+class Video(Base):
+    __tablename__ = "videos"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"))
+    filename = Column(String(255))
+    name = Column(String(255))
+    url = Column(String(255))
+    format = Column(String(50))
+    size = Column(Integer, default=0)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    user = relationship("User", back_populates="videos")
 
 
 class PlayHistory(Base):

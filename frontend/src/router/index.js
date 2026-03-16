@@ -1,24 +1,39 @@
 import { createRouter, createWebHistory } from 'vue-router'
-import VideoList from '@/views/VideoList.vue'
-import VideoDetail from '@/views/VideoDetail.vue'
+import Login from '@/views/Login.vue'
+import AdminLayout from '@/layouts/AdminLayout.vue'
+import VideoManagement from '@/views/VideoManagement.vue'
+import PlayHistory from '@/views/PlayHistory.vue'
 import Profile from '@/views/Profile.vue'
 
 const routes = [
   {
+    path: '/login',
+    name: 'Login',
+    component: Login,
+    meta: { guest: true }
+  },
+  {
     path: '/',
-    name: 'VideoList',
-    component: VideoList
-  },
-  {
-    path: '/video/:id',
-    name: 'VideoDetail',
-    component: VideoDetail
-  },
-  {
-    path: '/profile',
-    name: 'Profile',
-    component: Profile,
-    meta: { requiresAuth: true }
+    component: AdminLayout,
+    meta: { requiresAuth: true },
+    redirect: '/videos',
+    children: [
+      {
+        path: 'videos',
+        name: 'VideoManagement',
+        component: VideoManagement
+      },
+      {
+        path: 'history',
+        name: 'PlayHistory',
+        component: PlayHistory
+      },
+      {
+        path: 'profile',
+        name: 'Profile',
+        component: Profile
+      }
+    ]
   }
 ]
 
@@ -27,15 +42,13 @@ const router = createRouter({
   routes
 })
 
-// Navigation guard for protected routes
 router.beforeEach((to, from, next) => {
-  if (to.meta.requiresAuth) {
-    const token = localStorage.getItem('access_token')
-    if (!token) {
-      next('/')
-    } else {
-      next()
-    }
+  const token = localStorage.getItem('access_token')
+  
+  if (to.meta.guest && token) {
+    next('/videos')
+  } else if (to.meta.requiresAuth && !token) {
+    next('/login')
   } else {
     next()
   }

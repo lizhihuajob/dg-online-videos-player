@@ -1,137 +1,101 @@
 <template>
-  <div class="profile-container">
-    <!-- Header -->
-    <header class="profile-header">
-      <div class="header-content">
-        <div class="back-button" @click="goBack">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M19 12H5M12 19l-7-7 7-7"/>
-          </svg>
-          <span>返回播放器</span>
-        </div>
-        <h1 class="header-title">个人中心</h1>
-        <div class="header-spacer"></div>
-      </div>
-    </header>
+  <div class="profile-page">
+    <div class="page-header">
+      <h1>个人中心</h1>
+    </div>
 
     <div class="profile-content">
-      <!-- User Info Card -->
       <div class="profile-card glass">
-        <div class="user-profile-header">
-          <div class="profile-avatar">
-            <span class="avatar-text">{{ userInitial }}</span>
+        <div class="avatar-section">
+          <div class="avatar-wrapper">
+            <div class="avatar-container">
+              <img v-if="currentUser?.avatar" :src="getFullUrl(currentUser.avatar)" :alt="currentUser?.username" class="avatar-img">
+              <div v-else class="avatar-placeholder">
+                <span class="avatar-text">{{ userInitial }}</span>
+              </div>
+              <div class="avatar-overlay" @click="triggerFileInput">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                  <circle cx="12" cy="7" r="4"/>
+                  <path d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707"/>
+                </svg>
+                <span>更换头像</span>
+              </div>
+            </div>
+            <input 
+              type="file" 
+              ref="avatarInput" 
+              @change="handleAvatarUpload" 
+              accept="image/*" 
+              hidden
+            >
           </div>
-          <div class="profile-info">
-            <h2 class="profile-name">{{ currentUser?.username }}</h2>
-            <p class="profile-email">{{ currentUser?.email }}</p>
-            <span class="profile-badge">普通用户</span>
+          <div class="user-info">
+            <h2 class="username">{{ currentUser?.username }}</h2>
+            <p class="user-email">{{ currentUser?.email }}</p>
+            <span class="user-badge">管理员</span>
           </div>
         </div>
       </div>
 
-      <!-- Tabs -->
-      <div class="profile-tabs">
-        <button 
-          class="tab-btn" 
-          :class="{ active: activeTab === 'info' }"
-          @click="activeTab = 'info'"
-        >
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
-            <circle cx="12" cy="7" r="4"/>
-          </svg>
-          个人信息
-        </button>
-        <button 
-          class="tab-btn" 
-          :class="{ active: activeTab === 'password' }"
-          @click="activeTab = 'password'"
-        >
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
-            <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
-          </svg>
-          修改密码
-        </button>
-      </div>
-
-      <!-- Info Tab Content -->
-      <div v-if="activeTab === 'info'" class="tab-content glass">
-        <h3 class="section-title">编辑个人信息</h3>
-        <div class="form-group">
-          <label>用户名</label>
-          <input 
-            type="text" 
-            v-model="profileForm.username" 
-            placeholder="请输入用户名"
-            :disabled="isUpdating"
-          >
-        </div>
-        <div class="form-group">
-          <label>邮箱</label>
-          <input 
-            type="email" 
-            v-model="profileForm.email" 
-            placeholder="请输入邮箱"
-            :disabled="isUpdating"
-          >
-        </div>
-        <div class="form-actions">
+      <div class="settings-card glass">
+        <div class="tabs">
           <button 
-            class="save-btn" 
-            @click="updateProfile"
-            :disabled="isUpdating || !hasProfileChanges"
+            class="tab-btn" 
+            :class="{ active: activeTab === 'password' }"
+            @click="activeTab = 'password'"
           >
-            <span v-if="isUpdating" class="btn-spinner"></span>
-            <span v-else>保存修改</span>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+              <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+            </svg>
+            修改密码
           </button>
         </div>
-      </div>
 
-      <!-- Password Tab Content -->
-      <div v-if="activeTab === 'password'" class="tab-content glass">
-        <h3 class="section-title">修改密码</h3>
-        <div class="form-group">
-          <label>当前密码</label>
-          <input 
-            type="password" 
-            v-model="passwordForm.currentPassword" 
-            placeholder="请输入当前密码"
-            :disabled="isUpdating"
-          >
-        </div>
-        <div class="form-group">
-          <label>新密码</label>
-          <input 
-            type="password" 
-            v-model="passwordForm.newPassword" 
-            placeholder="请输入新密码（至少6位）"
-            :disabled="isUpdating"
-          >
-        </div>
-        <div class="form-group">
-          <label>确认新密码</label>
-          <input 
-            type="password" 
-            v-model="passwordForm.confirmPassword" 
-            placeholder="请再次输入新密码"
-            :disabled="isUpdating"
-          >
-        </div>
-        <div class="form-actions">
-          <button 
-            class="save-btn" 
-            @click="updatePassword"
-            :disabled="isUpdating || !isPasswordFormValid"
-          >
-            <span v-if="isUpdating" class="btn-spinner"></span>
-            <span v-else>修改密码</span>
-          </button>
+        <div class="tab-content">
+          <h3 class="section-title">修改密码</h3>
+          <div class="form-group">
+            <label>当前密码</label>
+            <input 
+              type="password" 
+              v-model="passwordForm.currentPassword" 
+              placeholder="请输入当前密码"
+              :disabled="isUpdating"
+            >
+          </div>
+          <div class="form-group">
+            <label>新密码</label>
+            <input 
+              type="password" 
+              v-model="passwordForm.newPassword" 
+              placeholder="请输入新密码（至少6位）"
+              :disabled="isUpdating"
+            >
+          </div>
+          <div class="form-group">
+            <label>确认新密码</label>
+            <input 
+              type="password" 
+              v-model="passwordForm.confirmPassword" 
+              placeholder="请再次输入新密码"
+              :disabled="isUpdating"
+            >
+          </div>
+          <div class="form-actions">
+            <button 
+              class="save-btn" 
+              @click="updatePassword"
+              :disabled="isUpdating || !isPasswordFormValid"
+            >
+              <span v-if="isUpdating" class="btn-spinner"></span>
+              <span v-else>修改密码</span>
+            </button>
+          </div>
         </div>
       </div>
     </div>
 
-    <!-- Success Modal -->
     <div v-if="showSuccess" class="modal-overlay" @click="showSuccess = false">
       <div class="modal-card glass" @click.stop>
         <div class="modal-header">
@@ -146,7 +110,6 @@
       </div>
     </div>
 
-    <!-- Error Modal -->
     <div v-if="showError" class="modal-overlay" @click="showError = false">
       <div class="modal-card glass" @click.stop>
         <div class="modal-header">
@@ -173,17 +136,13 @@ const API_BASE = 'http://localhost:8000'
 
 const currentUser = ref(null)
 const accessToken = ref(null)
-const activeTab = ref('info')
+const avatarInput = ref(null)
+const activeTab = ref('password')
 const isUpdating = ref(false)
 const showSuccess = ref(false)
 const showError = ref(false)
 const successMessage = ref('')
 const errorMessage = ref('')
-
-const profileForm = ref({
-  username: '',
-  email: ''
-})
 
 const passwordForm = ref({
   currentPassword: '',
@@ -192,12 +151,7 @@ const passwordForm = ref({
 })
 
 const userInitial = computed(() => {
-  return currentUser.value?.username?.charAt(0).toUpperCase() || '?'
-})
-
-const hasProfileChanges = computed(() => {
-  return profileForm.value.username !== currentUser.value?.username ||
-         profileForm.value.email !== currentUser.value?.email
+  return currentUser.value?.username?.charAt(0).toUpperCase() || 'A'
 })
 
 const isPasswordFormValid = computed(() => {
@@ -213,12 +167,16 @@ onMounted(() => {
   if (token && user) {
     accessToken.value = token
     currentUser.value = JSON.parse(user)
-    profileForm.value.username = currentUser.value.username
-    profileForm.value.email = currentUser.value.email
   } else {
-    router.push('/')
+    router.push('/login')
   }
 })
+
+const getFullUrl = (url) => {
+  if (!url) return ''
+  if (url.startsWith('http')) return url
+  return `${API_BASE}${url}`
+}
 
 const apiRequest = async (endpoint, options = {}) => {
   const headers = {
@@ -237,36 +195,39 @@ const apiRequest = async (endpoint, options = {}) => {
   return response
 }
 
-const goBack = () => {
-  router.push('/')
+const triggerFileInput = () => {
+  avatarInput.value.click()
 }
 
-const updateProfile = async () => {
-  if (!profileForm.value.username || !profileForm.value.email) {
-    errorMessage.value = '用户名和邮箱不能为空'
+const handleAvatarUpload = async (event) => {
+  const file = event.target.files[0]
+  if (!file) return
+
+  if (!file.type.startsWith('image/')) {
+    errorMessage.value = '请选择图片文件'
     showError.value = true
     return
   }
 
+  const formData = new FormData()
+  formData.append('file', file)
+
   isUpdating.value = true
   try {
-    const response = await apiRequest('/users/me', {
-      method: 'PUT',
-      body: JSON.stringify({
-        username: profileForm.value.username,
-        email: profileForm.value.email
-      })
+    const response = await apiRequest('/upload-avatar', {
+      method: 'POST',
+      body: formData
     })
 
     if (response.ok) {
-      const updatedUser = await response.json()
-      currentUser.value = updatedUser
-      localStorage.setItem('current_user', JSON.stringify(updatedUser))
-      successMessage.value = '个人信息更新成功'
+      const result = await response.json()
+      currentUser.value.avatar = result.avatar
+      localStorage.setItem('current_user', JSON.stringify(currentUser.value))
+      successMessage.value = '头像更新成功'
       showSuccess.value = true
     } else {
       const error = await response.json()
-      errorMessage.value = error.detail || '更新失败'
+      errorMessage.value = error.detail || '头像上传失败'
       showError.value = true
     }
   } catch (err) {
@@ -274,6 +235,7 @@ const updateProfile = async () => {
     showError.value = true
   } finally {
     isUpdating.value = false
+    avatarInput.value.value = ''
   }
 }
 
@@ -323,137 +285,149 @@ const updatePassword = async () => {
 </script>
 
 <style lang="scss" scoped>
-.profile-container {
-  min-height: 100vh;
-  background: radial-gradient(ellipse at 20% 0%, #1e1b4b 0%, #0f172a 40%, #020617 100%);
-  color: #f8fafc;
+.profile-page {
+  min-height: 100%;
 }
 
-.profile-header {
-  background: rgba(15, 23, 42, 0.8);
-  border-bottom: 1px solid rgba(99, 102, 241, 0.1);
-  backdrop-filter: blur(12px);
-  position: sticky;
-  top: 0;
-  z-index: 100;
+.page-header {
+  margin-bottom: 24px;
 
-  .header-content {
-    max-width: 800px;
-    margin: 0 auto;
-    padding: 16px 24px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-  }
-
-  .back-button {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 8px 16px;
-    background: rgba(99, 102, 241, 0.1);
-    border: 1px solid rgba(99, 102, 241, 0.2);
-    border-radius: 8px;
-    color: #a5b4fc;
-    font-size: 0.9rem;
-    cursor: pointer;
-    transition: all 0.3s ease;
-
-    &:hover {
-      background: rgba(99, 102, 241, 0.2);
-      border-color: rgba(99, 102, 241, 0.4);
-      color: #f8fafc;
-      transform: translateX(-2px);
-    }
-
-    svg {
-      width: 18px;
-      height: 18px;
-    }
-  }
-
-  .header-title {
-    font-size: 1.25rem;
+  h1 {
+    font-size: 1.5rem;
     font-weight: 600;
     background: linear-gradient(135deg, #f8fafc 0%, #a5b4fc 100%);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
-  }
-
-  .header-spacer {
-    width: 100px;
+    margin: 0;
   }
 }
 
 .profile-content {
   max-width: 800px;
-  margin: 0 auto;
-  padding: 32px 24px;
 }
 
 .profile-card {
   background: rgba(30, 41, 59, 0.6);
   border: 1px solid rgba(99, 102, 241, 0.15);
-  border-radius: 20px;
+  border-radius: 16px;
   padding: 32px;
   margin-bottom: 24px;
   backdrop-filter: blur(10px);
+}
 
-  .user-profile-header {
-    display: flex;
-    align-items: center;
-    gap: 24px;
+.avatar-section {
+  display: flex;
+  align-items: center;
+  gap: 24px;
 
-    .profile-avatar {
-      width: 80px;
-      height: 80px;
-      border-radius: 50%;
-      background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      box-shadow: 0 4px 20px rgba(99, 102, 241, 0.4);
-
-      .avatar-text {
-        color: white;
-        font-size: 2rem;
-        font-weight: 700;
-      }
-    }
-
-    .profile-info {
-      .profile-name {
-        font-size: 1.5rem;
-        font-weight: 600;
-        color: #f8fafc;
-        margin-bottom: 4px;
-      }
-
-      .profile-email {
-        font-size: 0.95rem;
-        color: #94a3b8;
-        margin-bottom: 8px;
-      }
-
-      .profile-badge {
-        display: inline-block;
-        padding: 4px 12px;
-        background: linear-gradient(135deg, rgba(99, 102, 241, 0.2) 0%, rgba(139, 92, 246, 0.15) 100%);
-        border: 1px solid rgba(99, 102, 241, 0.3);
-        border-radius: 20px;
-        font-size: 0.75rem;
-        color: #a5b4fc;
-        font-weight: 500;
-      }
-    }
+  @media (max-width: 640px) {
+    flex-direction: column;
+    text-align: center;
   }
 }
 
-.profile-tabs {
+.avatar-wrapper {
+  position: relative;
+}
+
+.avatar-container {
+  position: relative;
+  width: 100px;
+  height: 100px;
+  border-radius: 50%;
+  overflow: hidden;
+  cursor: pointer;
+
+  &:hover .avatar-overlay {
+    opacity: 1;
+  }
+}
+
+.avatar-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.avatar-placeholder {
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
   display: flex;
-  gap: 12px;
-  margin-bottom: 24px;
+  align-items: center;
+  justify-content: center;
+
+  .avatar-text {
+    color: white;
+    font-size: 2.5rem;
+    font-weight: 700;
+  }
+}
+
+.avatar-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  gap: 4px;
+
+  svg {
+    width: 24px;
+    height: 24px;
+  }
+
+  span {
+    font-size: 0.75rem;
+  }
+}
+
+.user-info {
+  .username {
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: #f8fafc;
+    margin: 0 0 8px 0;
+  }
+
+  .user-email {
+    font-size: 0.95rem;
+    color: #94a3b8;
+    margin: 0 0 8px 0;
+  }
+
+  .user-badge {
+    display: inline-block;
+    padding: 4px 12px;
+    background: linear-gradient(135deg, rgba(99, 102, 241, 0.2) 0%, rgba(139, 92, 246, 0.15) 100%);
+    border: 1px solid rgba(99, 102, 241, 0.3);
+    border-radius: 20px;
+    font-size: 0.75rem;
+    color: #a5b4fc;
+    font-weight: 500;
+  }
+}
+
+.settings-card {
+  background: rgba(30, 41, 59, 0.6);
+  border: 1px solid rgba(99, 102, 241, 0.15);
+  border-radius: 16px;
+  backdrop-filter: blur(10px);
+  overflow: hidden;
+}
+
+.tabs {
+  display: flex;
+  border-bottom: 1px solid rgba(99, 102, 241, 0.1);
 
   .tab-btn {
     flex: 1;
@@ -461,15 +435,15 @@ const updatePassword = async () => {
     align-items: center;
     justify-content: center;
     gap: 8px;
-    padding: 14px 24px;
-    background: rgba(30, 41, 59, 0.4);
-    border: 1px solid rgba(99, 102, 241, 0.15);
-    border-radius: 12px;
+    padding: 16px 24px;
+    background: transparent;
+    border: none;
     color: #94a3b8;
     font-size: 0.95rem;
     font-weight: 500;
     cursor: pointer;
     transition: all 0.3s ease;
+    border-bottom: 2px solid transparent;
 
     svg {
       width: 18px;
@@ -477,25 +451,19 @@ const updatePassword = async () => {
     }
 
     &:hover {
-      background: rgba(99, 102, 241, 0.1);
-      border-color: rgba(99, 102, 241, 0.3);
       color: #c7d2fe;
     }
 
     &.active {
-      background: linear-gradient(135deg, rgba(99, 102, 241, 0.2) 0%, rgba(139, 92, 246, 0.15) 100%);
-      border-color: rgba(99, 102, 241, 0.4);
       color: #f8fafc;
+      border-bottom-color: #6366f1;
+      background: rgba(99, 102, 241, 0.05);
     }
   }
 }
 
 .tab-content {
-  background: rgba(30, 41, 59, 0.6);
-  border: 1px solid rgba(99, 102, 241, 0.15);
-  border-radius: 20px;
   padding: 32px;
-  backdrop-filter: blur(10px);
 
   .section-title {
     font-size: 1.1rem;
@@ -505,84 +473,84 @@ const updatePassword = async () => {
     padding-bottom: 16px;
     border-bottom: 1px solid rgba(99, 102, 241, 0.1);
   }
+}
 
-  .form-group {
-    margin-bottom: 20px;
+.form-group {
+  margin-bottom: 20px;
 
-    label {
-      display: block;
-      margin-bottom: 8px;
-      font-size: 0.9rem;
-      color: #94a3b8;
-    }
-
-    input {
-      width: 100%;
-      padding: 12px 16px;
-      background: rgba(15, 23, 42, 0.6);
-      border: 1px solid rgba(99, 102, 241, 0.2);
-      border-radius: 10px;
-      color: #f8fafc;
-      font-size: 0.95rem;
-      outline: none;
-      transition: all 0.25s ease;
-
-      &::placeholder {
-        color: #475569;
-      }
-
-      &:focus {
-        border-color: rgba(99, 102, 241, 0.5);
-        background: rgba(15, 23, 42, 0.8);
-        box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
-      }
-
-      &:disabled {
-        opacity: 0.6;
-        cursor: not-allowed;
-      }
-    }
+  label {
+    display: block;
+    margin-bottom: 8px;
+    font-size: 0.9rem;
+    color: #94a3b8;
   }
 
-  .form-actions {
-    margin-top: 32px;
+  input {
+    width: 100%;
+    padding: 12px 16px;
+    background: rgba(15, 23, 42, 0.6);
+    border: 1px solid rgba(99, 102, 241, 0.2);
+    border-radius: 10px;
+    color: #f8fafc;
+    font-size: 0.95rem;
+    outline: none;
+    transition: all 0.25s ease;
 
-    .save-btn {
-      width: 100%;
-      padding: 14px 24px;
-      background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
-      border: none;
-      border-radius: 12px;
-      color: white;
-      font-size: 0.95rem;
-      font-weight: 600;
-      cursor: pointer;
-      transition: all 0.3s ease;
-      box-shadow: 0 4px 15px -3px rgba(99, 102, 241, 0.4);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 8px;
+    &::placeholder {
+      color: #475569;
+    }
 
-      &:hover:not(:disabled) {
-        background: linear-gradient(135deg, #4f46e5 0%, #4338ca 100%);
-        transform: translateY(-1px);
-        box-shadow: 0 6px 20px -4px rgba(99, 102, 241, 0.5);
-      }
+    &:focus {
+      border-color: rgba(99, 102, 241, 0.5);
+      background: rgba(15, 23, 42, 0.8);
+      box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+    }
 
-      &:disabled {
-        opacity: 0.6;
-        cursor: not-allowed;
-      }
+    &:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+  }
+}
 
-      .btn-spinner {
-        width: 20px;
-        height: 20px;
-        border: 2px solid rgba(255, 255, 255, 0.3);
-        border-top-color: white;
-        border-radius: 50%;
-        animation: spin 0.8s linear infinite;
-      }
+.form-actions {
+  margin-top: 32px;
+
+  .save-btn {
+    width: 100%;
+    padding: 14px 24px;
+    background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+    border: none;
+    border-radius: 12px;
+    color: white;
+    font-size: 0.95rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 15px -3px rgba(99, 102, 241, 0.4);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+
+    &:hover:not(:disabled) {
+      background: linear-gradient(135deg, #4f46e5 0%, #4338ca 100%);
+      transform: translateY(-1px);
+      box-shadow: 0 6px 20px -4px rgba(99, 102, 241, 0.5);
+    }
+
+    &:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+
+    .btn-spinner {
+      width: 20px;
+      height: 20px;
+      border: 2px solid rgba(255, 255, 255, 0.3);
+      border-top-color: white;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
     }
   }
 }
@@ -672,61 +640,5 @@ const updatePassword = async () => {
 
 @keyframes spin {
   to { transform: rotate(360deg); }
-}
-
-@media (max-width: 640px) {
-  .profile-header {
-    .header-content {
-      padding: 12px 16px;
-    }
-
-    .header-title {
-      font-size: 1.1rem;
-    }
-
-    .back-button span {
-      display: none;
-    }
-
-    .header-spacer {
-      width: 50px;
-    }
-  }
-
-  .profile-content {
-    padding: 20px 16px;
-  }
-
-  .profile-card {
-    padding: 24px;
-
-    .user-profile-header {
-      flex-direction: column;
-      text-align: center;
-      gap: 16px;
-
-      .profile-avatar {
-        width: 64px;
-        height: 64px;
-
-        .avatar-text {
-          font-size: 1.5rem;
-        }
-      }
-    }
-  }
-
-  .profile-tabs {
-    flex-direction: column;
-    gap: 8px;
-
-    .tab-btn {
-      padding: 12px 16px;
-    }
-  }
-
-  .tab-content {
-    padding: 24px 20px;
-  }
 }
 </style>
