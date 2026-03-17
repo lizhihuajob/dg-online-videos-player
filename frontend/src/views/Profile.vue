@@ -274,7 +274,10 @@ function showToast(message, type = 'success') {
 
 <style lang="scss" scoped>
 .profile-container {
-  max-width: 600px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+  max-width: 1000px;
   margin: 0 auto;
 }
 
@@ -283,7 +286,7 @@ function showToast(message, type = 'success') {
   border: 1px solid rgba(99, 102, 241, 0.15);
   border-radius: 20px;
   padding: 32px;
-  margin-bottom: 24px;
+  align-self: start;
 }
 
 .profile-header {
