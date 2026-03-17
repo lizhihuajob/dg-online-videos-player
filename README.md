@@ -193,6 +193,55 @@ docker compose down -v
 | Backend API | http://localhost:8000 | RESTful API |
 | API 文档 | http://localhost:8000/docs | Swagger UI |
 
+### 默认登录账号
+- **用户名**: admin
+- **密码**: 123456
+
+## 📝 修改记录
+
+### 2025-06-30 功能优化与修复
+
+#### ✅ 1. 登录页面优化
+- **文件**: `frontend/src/views/Login.vue`
+- **修改**: 移除登录页面上的默认账号信息提示，账号信息统一在 README.md 中说明
+
+#### ✅ 2. 视频/音乐管理页 - 卡片/列表切换功能
+- **文件**: `frontend/src/views/VideoManagement.vue`, `frontend/src/views/MusicManagement.vue`
+- **修改**: 添加视图切换按钮，支持卡片模式和列表模式切换展示
+
+#### ✅ 3. 分组管理页 - 表格形式展示
+- **文件**: `frontend/src/views/GroupManagement.vue`
+- **修改**: 重构页面布局，从卡片形式改为表格形式展示分组信息，包含分组名称、视频数量、创建时间、操作等列
+
+#### ✅ 4. 播放记录页优化
+- **文件**: `frontend/src/views/PlayHistory.vue`
+- **修改**: 
+  - 移除"在线视频"、"本地视频"切换按钮
+  - 合并在线和本地播放记录为统一列表
+  - 改为表格形式展示，包含类型、视频名称、格式、播放时间、详情、操作列
+
+#### ✅ 5. 音乐管理组件重构
+- **文件**: `frontend/src/views/MusicManagement.vue`
+- **修改**: 
+  - 拆分臃肿的 MusicManagement.vue 文件
+  - 创建可复用基础模态框组件 `BaseModal.vue`
+  - 拆分5个模态框组件到 `frontend/src/components/music/` 目录:
+    - `MusicAddModal.vue` - 添加音乐
+    - `MusicEditModal.vue` - 编辑音乐
+    - `MusicDeleteModal.vue` - 删除音乐
+    - `MusicChangeGroupModal.vue` - 切换分组
+    - `MusicBatchDeleteModal.vue` - 批量删除
+  - 创建业务逻辑 composable: `frontend/src/composables/useMusicManagement.js`
+  - 创建工具函数: `frontend/src/utils/format.js`
+
+#### ✅ 6. 个人中心UI调整
+- **文件**: `frontend/src/views/Profile.vue`
+- **修改**: 改为一左一右布局（Grid两栏布局），左侧显示用户信息卡片，右侧显示修改密码表单
+
+#### ✅ 7. 代码修复与清理
+- **文件**: `frontend/src/components/BaseModal.vue`
+- **修改**: 修复模态框显示控制问题，添加 `show` 属性和 `v-if` 条件渲染，解决模态框一直显示的bug
+
 ## 🧪 测试
 
 ### 一键测试

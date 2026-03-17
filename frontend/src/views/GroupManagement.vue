@@ -30,51 +30,66 @@
       </div>
     </div>
 
-    <!-- Group Grid -->
-    <div v-if="filteredGroups.length > 0" class="group-grid">
-      <div
-        v-for="group in filteredGroups"
-        :key="group.id"
-        class="group-card"
-      >
-        <div class="group-icon" :class="group.group_type">
-          <svg v-if="group.group_type === 'video'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <rect x="2" y="2" width="20" height="20" rx="2.18" ry="2.18"/>
-            <line x1="7" y1="2" x2="7" y2="22"/>
-            <line x1="17" y1="2" x2="17" y2="22"/>
-            <line x1="2" y1="12" x2="22" y2="12"/>
-          </svg>
-          <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M9 18V5l12-2v13"/>
-            <circle cx="6" cy="18" r="3"/>
-            <circle cx="18" cy="16" r="3"/>
-          </svg>
-        </div>
-
-        <div class="group-info">
-          <h3 class="group-name" :title="group.name">{{ group.name }}</h3>
-          <p v-if="group.description" class="group-description">{{ group.description }}</p>
-          <div class="group-meta">
-            <span class="group-type">{{ group.group_type === 'video' ? '视频' : '音乐' }}</span>
-            <span class="group-date">{{ formatDate(group.created_at) }}</span>
-          </div>
-        </div>
-
-        <div class="group-actions">
-          <button class="action-btn edit" @click="editGroup(group)" title="修改">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
-              <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
-            </svg>
-          </button>
-          <button class="action-btn delete" @click="confirmDelete(group)" title="删除">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <polyline points="3 6 5 6 21 6"/>
-              <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
-            </svg>
-          </button>
-        </div>
-      </div>
+    <!-- Group Table -->
+    <div v-if="filteredGroups.length > 0" class="group-table-container">
+      <table class="group-table">
+        <thead>
+          <tr>
+            <th>分组名称</th>
+            <th>类型</th>
+            <th>描述</th>
+            <th>创建时间</th>
+            <th>操作</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr
+            v-for="group in filteredGroups"
+            :key="group.id"
+            class="group-row"
+          >
+            <td class="group-name-cell">
+              <div class="group-icon-wrapper">
+                <div class="group-icon" :class="group.group_type">
+                  <svg v-if="group.group_type === 'video'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="2" y="2" width="20" height="20" rx="2.18" ry="2.18"/>
+                    <line x1="7" y1="2" x2="7" y2="22"/>
+                    <line x1="17" y1="2" x2="17" y2="22"/>
+                    <line x1="2" y1="12" x2="22" y2="12"/>
+                  </svg>
+                  <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M9 18V5l12-2v13"/>
+                    <circle cx="6" cy="18" r="3"/>
+                    <circle cx="18" cy="16" r="3"/>
+                  </svg>
+                </div>
+                <span class="group-name" :title="group.name">{{ group.name }}</span>
+              </div>
+            </td>
+            <td>
+              <span class="group-type-badge" :class="group.group_type">{{ group.group_type === 'video' ? '视频' : '音乐' }}</span>
+            </td>
+            <td class="group-description-cell">
+              <span :title="group.description">{{ group.description || '-' }}</span>
+            </td>
+            <td class="group-date-cell">{{ formatDate(group.created_at) }}</td>
+            <td class="group-actions-cell">
+              <button class="action-btn edit" @click="editGroup(group)" title="修改">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                  <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                </svg>
+              </button>
+              <button class="action-btn delete" @click="confirmDelete(group)" title="删除">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <polyline points="3 6 5 6 21 6"/>
+                  <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                </svg>
+              </button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
     </div>
 
     <!-- Empty State -->
@@ -569,33 +584,76 @@ function showToast(message, type = 'success') {
   }
 }
 
-.group-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-  gap: 24px;
+.group-table-container {
+  overflow-x: auto;
+  border-radius: 12px;
+  background: rgba(30, 41, 59, 0.4);
+  border: 1px solid rgba(99, 102, 241, 0.1);
 }
 
-.group-card {
-  background: rgba(30, 41, 59, 0.6);
-  border: 1px solid rgba(99, 102, 241, 0.15);
-  border-radius: 16px;
-  padding: 24px;
-  display: flex;
-  align-items: flex-start;
-  gap: 16px;
-  transition: all 0.3s ease;
+.group-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
 
-  &:hover {
-    transform: translateY(-4px);
-    border-color: rgba(99, 102, 241, 0.3);
-    box-shadow: 0 12px 40px -10px rgba(99, 102, 241, 0.2);
+  th {
+    background: rgba(30, 41, 59, 0.6);
+    padding: 16px 20px;
+    text-align: left;
+    font-weight: 600;
+    color: #f8fafc;
+    font-size: 0.9rem;
+    border-bottom: 1px solid rgba(99, 102, 241, 0.1);
+    white-space: nowrap;
+
+    &:first-child {
+      border-top-left-radius: 12px;
+    }
+
+    &:last-child {
+      border-top-right-radius: 12px;
+    }
+  }
+
+  td {
+    padding: 16px 20px;
+    border-bottom: 1px solid rgba(99, 102, 241, 0.05);
+    vertical-align: middle;
+  }
+
+  .group-row {
+    transition: all 0.2s ease;
+
+    &:hover {
+      background: rgba(99, 102, 241, 0.05);
+    }
+
+    &:last-child td {
+      border-bottom: none;
+    }
+  }
+}
+
+.group-name-cell {
+  .group-icon-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .group-name {
+    font-weight: 600;
+    color: #f8fafc;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 }
 
 .group-icon {
-  width: 56px;
-  height: 56px;
-  border-radius: 14px;
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -612,58 +670,52 @@ function showToast(message, type = 'success') {
   }
 
   svg {
-    width: 28px;
-    height: 28px;
+    width: 20px;
+    height: 20px;
   }
 }
 
-.group-info {
-  flex: 1;
-  min-width: 0;
+.group-type-badge {
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  font-weight: 500;
 
-  .group-name {
-    font-size: 1.05rem;
-    font-weight: 600;
-    color: #f8fafc;
-    margin-bottom: 6px;
+  &.video {
+    background: rgba(99, 102, 241, 0.1);
+    color: #a5b4fc;
+  }
+
+  &.music {
+    background: rgba(16, 185, 129, 0.1);
+    color: #34d399;
+  }
+}
+
+.group-description-cell {
+  max-width: 300px;
+  color: #94a3b8;
+  font-size: 0.9rem;
+
+  span {
+    display: block;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
   }
-
-  .group-description {
-    font-size: 0.85rem;
-    color: #94a3b8;
-    margin-bottom: 10px;
-    display: -webkit-box;
-    -webkit-line-clamp: 2;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
-  }
-
-  .group-meta {
-    display: flex;
-    gap: 12px;
-    font-size: 0.8rem;
-    color: #64748b;
-
-    .group-type {
-      padding: 2px 8px;
-      background: rgba(99, 102, 241, 0.1);
-      border-radius: 4px;
-      color: #a5b4fc;
-    }
-  }
 }
 
-.group-actions {
-  display: flex;
-  gap: 8px;
+.group-date-cell {
+  color: #64748b;
+  font-size: 0.9rem;
+  white-space: nowrap;
+}
 
+.group-actions-cell {
   .action-btn {
     width: 36px;
     height: 36px;
-    display: flex;
+    display: inline-flex;
     align-items: center;
     justify-content: center;
     background: rgba(15, 23, 42, 0.6);
@@ -672,6 +724,7 @@ function showToast(message, type = 'success') {
     color: #94a3b8;
     cursor: pointer;
     transition: all 0.2s ease;
+    margin-right: 8px;
 
     svg {
       width: 16px;

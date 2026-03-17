@@ -1,39 +1,12 @@
 <template>
   <div class="play-history">
-    <!-- Tabs -->
-    <div class="tabs">
-      <button
-        class="tab-btn"
-        :class="{ active: activeTab === 'online' }"
-        @click="activeTab = 'online'"
-      >
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
-          <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
-        </svg>
-        <span>在线视频</span>
-      </button>
-      <button
-        class="tab-btn"
-        :class="{ active: activeTab === 'local' }"
-        @click="activeTab = 'local'"
-      >
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-          <polyline points="17 8 12 3 7 8"/>
-          <line x1="12" y1="3" x2="12" y2="15"/>
-        </svg>
-        <span>本地视频</span>
-      </button>
-    </div>
-
     <!-- Toolbar -->
     <div class="toolbar">
       <div class="history-stats">
-        共 <strong>{{ activeTab === 'online' ? onlineHistory.length : localHistory.length }}</strong> 条记录
+        共 <strong>{{ allHistory.length }}</strong> 条记录
       </div>
       <button
-        v-if="(activeTab === 'online' && onlineHistory.length > 0) || (activeTab === 'local' && localHistory.length > 0)"
+        v-if="allHistory.length > 0"
         class="clear-btn"
         @click="confirmClear"
       >
@@ -45,98 +18,74 @@
       </button>
     </div>
 
-    <!-- Online History List -->
-    <div v-if="activeTab === 'online'" class="history-list">
-      <div
-        v-for="item in onlineHistory"
-        :key="item.id"
-        class="history-item"
-      >
-        <div class="item-icon online">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
-            <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
-          </svg>
-        </div>
-        <div class="item-content">
-          <h4 class="item-title" :title="item.video_name">{{ item.video_name }}</h4>
-          <div class="item-meta">
-            <span class="item-format">{{ item.video_format.toUpperCase() }}</span>
-            <span class="item-time">{{ formatTime(item.created_at) }}</span>
-          </div>
-          <p class="item-url" :title="item.video_url">{{ item.video_url }}</p>
-        </div>
-        <div class="item-actions">
-          <button class="action-btn play" @click="playOnlineVideo(item)" title="播放">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <polygon points="5 3 19 12 5 21 5 3"/>
-            </svg>
-          </button>
-          <button class="action-btn delete" @click="confirmDelete(item)" title="删除">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <polyline points="3 6 5 6 21 6"/>
-              <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
-            </svg>
-          </button>
-        </div>
-      </div>
-
-      <div v-if="onlineHistory.length === 0 && !isLoading" class="empty-state">
-        <div class="empty-icon">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-            <circle cx="12" cy="12" r="10"/>
-            <line x1="12" y1="8" x2="12" y2="12"/>
-            <line x1="12" y1="16" x2="12.01" y2="16"/>
-          </svg>
-        </div>
-        <h3>暂无在线视频记录</h3>
-        <p>您还没有播放过任何在线视频</p>
-      </div>
+    <!-- History Table -->
+    <div v-if="allHistory.length > 0" class="history-table-container">
+      <table class="history-table">
+        <thead>
+          <tr>
+            <th>类型</th>
+            <th>视频名称</th>
+            <th>格式</th>
+            <th>播放时间</th>
+            <th>详情</th>
+            <th>操作</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr
+            v-for="item in allHistory"
+            :key="`${item.type}-${item.id}`"
+            class="history-row"
+          >
+            <td>
+              <span class="type-badge" :class="item.type">
+                <svg v-if="item.type === 'online'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
+                  <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
+                </svg>
+                <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                  <polyline points="17 8 12 3 7 8"/>
+                  <line x1="12" y1="3" x2="12" y2="15"/>
+                </svg>
+                {{ item.type === 'online' ? '在线' : '本地' }}
+              </span>
+            </td>
+            <td class="name-cell">{{ item.video_name }}</td>
+            <td><span class="format-tag">{{ item.video_format?.toUpperCase() || '未知' }}</span></td>
+            <td class="time-cell">{{ formatTime(item.created_at) }}</td>
+            <td class="detail-cell">
+              <span v-if="item.type === 'online'" class="url-text" :title="item.video_url">{{ item.video_url }}</span>
+              <span v-else class="file-text" :title="formatFileInfo(item.file_info)">{{ formatFileInfo(item.file_info) }}</span>
+            </td>
+            <td class="actions-cell">
+              <button v-if="item.type === 'online'" class="action-btn play" @click="playOnlineVideo(item)" title="播放">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <polygon points="5 3 19 12 5 21 5 3"/>
+                </svg>
+              </button>
+              <button class="action-btn delete" @click="confirmDelete(item)" title="删除">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <polyline points="3 6 5 6 21 6"/>
+                  <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                </svg>
+              </button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
     </div>
 
-    <!-- Local History List -->
-    <div v-else class="history-list">
-      <div
-        v-for="item in localHistory"
-        :key="item.id"
-        class="history-item"
-      >
-        <div class="item-icon local">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-            <polyline points="17 8 12 3 7 8"/>
-            <line x1="12" y1="3" x2="12" y2="15"/>
-          </svg>
-        </div>
-        <div class="item-content">
-          <h4 class="item-title" :title="item.video_name">{{ item.video_name }}</h4>
-          <div class="item-meta">
-            <span class="item-format">{{ item.video_format.toUpperCase() }}</span>
-            <span class="item-time">{{ formatTime(item.created_at) }}</span>
-          </div>
-          <p class="item-file-info">{{ formatFileInfo(item.file_info) }}</p>
-        </div>
-        <div class="item-actions">
-          <button class="action-btn delete" @click="confirmDelete(item)" title="删除">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <polyline points="3 6 5 6 21 6"/>
-              <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
-            </svg>
-          </button>
-        </div>
+    <div v-if="allHistory.length === 0 && !isLoading" class="empty-state">
+      <div class="empty-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+          <circle cx="12" cy="12" r="10"/>
+          <line x1="12" y1="8" x2="12" y2="12"/>
+          <line x1="12" y1="16" x2="12.01" y2="16"/>
+        </svg>
       </div>
-
-      <div v-if="localHistory.length === 0 && !isLoading" class="empty-state">
-        <div class="empty-icon">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-            <circle cx="12" cy="12" r="10"/>
-            <line x1="12" y1="8" x2="12" y2="12"/>
-            <line x1="12" y1="16" x2="12.01" y2="16"/>
-          </svg>
-        </div>
-        <h3>暂无本地视频记录</h3>
-        <p>您还没有播放过任何本地视频</p>
-      </div>
+      <h3>暂无播放记录</h3>
+      <p>您还没有播放过任何视频</p>
     </div>
 
     <!-- Loading State -->
@@ -159,7 +108,7 @@
           <h3>确认清空</h3>
         </div>
         <div class="modal-body">
-          <p>确定要清空所有{{ activeTab === 'online' ? '在线' : '本地' }}视频播放记录吗？</p>
+          <p>确定要清空所有视频播放记录吗？</p>
           <p class="warning-text">此操作不可恢复。</p>
         </div>
         <div class="modal-footer">
@@ -237,14 +186,13 @@
 </template>
 
 <script setup>
-import { ref, onMounted, watch } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { useAuthStore } from '@/stores/auth.js'
 import VideoPlayer from '@/components/VideoPlayer.vue'
 
 const authStore = useAuthStore()
 
 // State
-const activeTab = ref('online')
 const onlineHistory = ref([])
 const localHistory = ref([])
 const isLoading = ref(false)
@@ -264,12 +212,14 @@ const currentVideo = ref(null)
 const toastMessage = ref('')
 const toastType = ref('success')
 
-// Lifecycle
-onMounted(() => {
-  loadHistory()
+const allHistory = computed(() => {
+  const online = onlineHistory.value.map(item => ({ ...item, type: 'online' }))
+  const local = localHistory.value.map(item => ({ ...item, type: 'local' }))
+  return [...online, ...local].sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
 })
 
-watch(activeTab, () => {
+// Lifecycle
+onMounted(() => {
   loadHistory()
 })
 
@@ -277,16 +227,15 @@ watch(activeTab, () => {
 async function loadHistory() {
   isLoading.value = true
   try {
-    if (activeTab.value === 'online') {
-      const response = await authStore.apiRequest('/history')
-      if (response.ok) {
-        onlineHistory.value = await response.json()
-      }
-    } else {
-      const response = await authStore.apiRequest('/local-history')
-      if (response.ok) {
-        localHistory.value = await response.json()
-      }
+    const [onlineRes, localRes] = await Promise.all([
+      authStore.apiRequest('/history'),
+      authStore.apiRequest('/local-history')
+    ])
+    if (onlineRes.ok) {
+      onlineHistory.value = await onlineRes.json()
+    }
+    if (localRes.ok) {
+      localHistory.value = await localRes.json()
     }
   } catch (err) {
     showToast('加载失败', 'error')
@@ -337,15 +286,14 @@ function confirmClear() {
 async function clearHistory() {
   isClearing.value = true
   try {
-    const endpoint = activeTab.value === 'online' ? '/history' : '/local-history'
-    const response = await authStore.apiRequest(endpoint, { method: 'DELETE' })
+    const [onlineRes, localRes] = await Promise.all([
+      authStore.apiRequest('/history', { method: 'DELETE' }),
+      authStore.apiRequest('/local-history', { method: 'DELETE' })
+    ])
 
-    if (response.ok) {
-      if (activeTab.value === 'online') {
-        onlineHistory.value = []
-      } else {
-        localHistory.value = []
-      }
+    if (onlineRes.ok || localRes.ok) {
+      onlineHistory.value = []
+      localHistory.value = []
       closeClearModal()
       showToast('清空成功', 'success')
     } else {
@@ -373,14 +321,15 @@ async function deleteHistory() {
 
   isDeleting.value = true
   try {
-    const endpoint = activeTab.value === 'online'
+    const isOnline = itemToDelete.value.type === 'online' || itemToDelete.value.video_url !== undefined
+    const endpoint = isOnline
       ? `/history/${itemToDelete.value.id}`
       : `/local-history/${itemToDelete.value.id}`
 
     const response = await authStore.apiRequest(endpoint, { method: 'DELETE' })
 
     if (response.ok) {
-      if (activeTab.value === 'online') {
+      if (isOnline) {
         onlineHistory.value = onlineHistory.value.filter(h => h.id !== itemToDelete.value.id)
       } else {
         localHistory.value = localHistory.value.filter(h => h.id !== itemToDelete.value.id)
@@ -428,44 +377,6 @@ function showToast(message, type = 'success') {
   min-height: 100%;
 }
 
-.tabs {
-  display: flex;
-  gap: 12px;
-  margin-bottom: 24px;
-
-  .tab-btn {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 12px 24px;
-    background: rgba(30, 41, 59, 0.6);
-    border: 1px solid rgba(99, 102, 241, 0.15);
-    border-radius: 12px;
-    color: #94a3b8;
-    font-size: 0.95rem;
-    font-weight: 500;
-    cursor: pointer;
-    transition: all 0.25s ease;
-
-    svg {
-      width: 18px;
-      height: 18px;
-    }
-
-    &:hover {
-      background: rgba(99, 102, 241, 0.1);
-      border-color: rgba(99, 102, 241, 0.3);
-      color: #c7d2fe;
-    }
-
-    &.active {
-      background: linear-gradient(135deg, rgba(99, 102, 241, 0.2) 0%, rgba(139, 92, 246, 0.15) 100%);
-      border-color: rgba(99, 102, 241, 0.4);
-      color: #f8fafc;
-    }
-  }
-}
-
 .toolbar {
   display: flex;
   justify-content: space-between;
@@ -509,35 +420,58 @@ function showToast(message, type = 'success') {
   }
 }
 
-.history-list {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
+.history-table-container {
+  overflow-x: auto;
+  border-radius: 12px;
+  border: 1px solid rgba(99, 102, 241, 0.1);
 }
 
-.history-item {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  padding: 16px 20px;
+.history-table {
+  width: 100%;
+  border-collapse: collapse;
   background: rgba(30, 41, 59, 0.6);
-  border: 1px solid rgba(99, 102, 241, 0.1);
-  border-radius: 12px;
-  transition: all 0.25s ease;
 
-  &:hover {
-    border-color: rgba(99, 102, 241, 0.2);
-    background: rgba(30, 41, 59, 0.8);
+  th, td {
+    padding: 14px 16px;
+    text-align: left;
+    border-bottom: 1px solid rgba(99, 102, 241, 0.1);
   }
 
-  .item-icon {
-    width: 48px;
-    height: 48px;
-    border-radius: 12px;
-    display: flex;
+  th {
+    background: rgba(15, 23, 42, 0.6);
+    color: #94a3b8;
+    font-weight: 600;
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  .history-row {
+    transition: all 0.2s ease;
+
+    &:hover {
+      background: rgba(30, 41, 59, 0.8);
+    }
+  }
+
+  td {
+    color: #f8fafc;
+    font-size: 0.9rem;
+  }
+
+  .type-badge {
+    display: inline-flex;
     align-items: center;
-    justify-content: center;
-    flex-shrink: 0;
+    gap: 4px;
+    padding: 4px 10px;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    font-weight: 600;
+
+    svg {
+      width: 12px;
+      height: 12px;
+    }
 
     &.online {
       background: rgba(99, 102, 241, 0.15);
@@ -548,77 +482,59 @@ function showToast(message, type = 'success') {
       background: rgba(16, 185, 129, 0.15);
       color: #10b981;
     }
-
-    svg {
-      width: 24px;
-      height: 24px;
-    }
   }
 
-  .item-content {
-    flex: 1;
-    min-width: 0;
-
-    .item-title {
-      font-size: 0.95rem;
-      font-weight: 600;
-      color: #f8fafc;
-      margin-bottom: 6px;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-
-    .item-meta {
-      display: flex;
-      gap: 12px;
-      margin-bottom: 4px;
-
-      .item-format {
-        padding: 2px 8px;
-        background: rgba(99, 102, 241, 0.15);
-        border-radius: 4px;
-        font-size: 0.7rem;
-        font-weight: 600;
-        color: #a5b4fc;
-      }
-
-      .item-time {
-        font-size: 0.8rem;
-        color: #64748b;
-      }
-    }
-
-    .item-url,
-    .item-file-info {
-      font-size: 0.8rem;
-      color: #64748b;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
+  .name-cell {
+    max-width: 200px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-weight: 500;
   }
 
-  .item-actions {
-    display: flex;
-    gap: 8px;
+  .format-tag {
+    padding: 2px 8px;
+    background: rgba(99, 102, 241, 0.15);
+    border-radius: 4px;
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: #a5b4fc;
+  }
+
+  .time-cell {
+    color: #94a3b8;
+    white-space: nowrap;
+  }
+
+  .detail-cell {
+    max-width: 200px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    color: #64748b;
+    font-size: 0.8rem;
+  }
+
+  .actions-cell {
+    white-space: nowrap;
 
     .action-btn {
-      width: 36px;
-      height: 36px;
-      display: flex;
+      width: 32px;
+      height: 32px;
+      display: inline-flex;
       align-items: center;
       justify-content: center;
       background: rgba(15, 23, 42, 0.6);
       border: 1px solid rgba(99, 102, 241, 0.15);
-      border-radius: 8px;
+      border-radius: 6px;
       color: #94a3b8;
       cursor: pointer;
       transition: all 0.2s ease;
+      margin-right: 6px;
 
       svg {
-        width: 16px;
-        height: 16px;
+        width: 14px;
+        height: 14px;
       }
 
       &:hover {
@@ -928,14 +844,6 @@ function showToast(message, type = 'success') {
 }
 
 @media (max-width: 768px) {
-  .tabs {
-    flex-direction: column;
-
-    .tab-btn {
-      justify-content: center;
-    }
-  }
-
   .history-item {
     flex-wrap: wrap;
 
