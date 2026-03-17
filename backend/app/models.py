@@ -16,6 +16,8 @@ class User(Base):
     play_history = relationship("PlayHistory", back_populates="user", cascade="all, delete-orphan")
     local_play_history = relationship("LocalPlayHistory", back_populates="user", cascade="all, delete-orphan")
     videos = relationship("Video", back_populates="user", cascade="all, delete-orphan")
+    musics = relationship("Music", back_populates="user", cascade="all, delete-orphan")
+    groups = relationship("Group", back_populates="user", cascade="all, delete-orphan")
 
 
 class PlayHistory(Base):
@@ -44,12 +46,29 @@ class LocalPlayHistory(Base):
     user = relationship("User", back_populates="local_play_history")
 
 
+class Group(Base):
+    """分组管理模型"""
+    __tablename__ = "groups"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    name = Column(String(255), nullable=False)
+    type = Column(String(20), nullable=False)  # video, music
+    description = Column(String(500), nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    user = relationship("User", back_populates="groups")
+    videos = relationship("Video", back_populates="group")
+    musics = relationship("Music", back_populates="group")
+
+
 class Video(Base):
     """用户上传的视频模型"""
     __tablename__ = "videos"
 
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    group_id = Column(Integer, ForeignKey("groups.id"), nullable=True)
     filename = Column(String(255), nullable=False)  # 存储的文件名
     original_name = Column(String(255), nullable=False)  # 原始文件名
     url = Column(String(255), nullable=False)  # 访问URL
@@ -58,3 +77,22 @@ class Video(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     user = relationship("User", back_populates="videos")
+    group = relationship("Group", back_populates="videos")
+
+
+class Music(Base):
+    """用户上传的音乐模型"""
+    __tablename__ = "musics"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    group_id = Column(Integer, ForeignKey("groups.id"), nullable=True)
+    filename = Column(String(255), nullable=False)  # 存储的文件名
+    original_name = Column(String(255), nullable=False)  # 原始文件名
+    url = Column(String(255), nullable=False)  # 访问URL
+    format = Column(String(10), nullable=False)  # 音乐格式
+    size = Column(BigInteger, default=0)  # 文件大小（字节）
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    user = relationship("User", back_populates="musics")
+    group = relationship("Group", back_populates="musics")

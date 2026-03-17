@@ -1,9 +1,11 @@
 import pytest
 import os
+os.environ["DATABASE_URL"] = "sqlite://"
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 from fastapi.testclient import TestClient
+from app import database
 from app.database import Base, get_db
 
 SQLALCHEMY_DATABASE_URL = "sqlite://"
@@ -13,6 +15,9 @@ engine = create_engine(
     connect_args={"check_same_thread": False},
     poolclass=StaticPool,
 )
+database.engine = engine
+database.SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+
 TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 Base.metadata.create_all(bind=engine)

@@ -5,6 +5,7 @@ import AdminLayout from '@/layouts/AdminLayout.vue'
 import VideoManagement from '@/views/VideoManagement.vue'
 import PlayHistory from '@/views/PlayHistory.vue'
 import Profile from '@/views/Profile.vue'
+import GroupManagement from '@/views/GroupManagement.vue'
 
 const routes = [
   {
@@ -31,6 +32,11 @@ const routes = [
         path: '/profile',
         name: 'Profile',
         component: Profile
+      },
+      {
+        path: '/groups',
+        name: 'GroupManagement',
+        component: GroupManagement
       }
     ]
   }

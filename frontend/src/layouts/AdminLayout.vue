@@ -102,8 +102,13 @@ const UserIcon = () => h('svg', { viewBox: '0 0 24 24', fill: 'none', stroke: 'c
   h('circle', { cx: '12', cy: '7', r: '4' })
 ])
 
+const FolderIcon = () => h('svg', { viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', 'stroke-width': '2' }, [
+  h('path', { d: 'M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z' })
+])
+
 const menuItems = [
   { name: '视频管理', path: '/', icon: VideoIcon },
+  { name: '分组管理', path: '/groups', icon: FolderIcon },
   { name: '播放记录', path: '/history', icon: HistoryIcon },
   { name: '个人中心', path: '/profile', icon: UserIcon }
 ]
