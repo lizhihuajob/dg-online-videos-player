@@ -193,6 +193,18 @@ docker compose down -v
 | Backend API | http://localhost:8000 | RESTful API |
 | API 文档 | http://localhost:8000/docs | Swagger UI |
 
+## 🔑 默认账号信息
+
+| 字段 | 值 |
+|------|------|
+| 用户名 | admin |
+| 密码 | 123456 |
+| 邮箱 | admin@example.com |
+
+**说明**: 
+- 首次登录后建议立即修改默认密码
+- 登录页面不再显示账号信息，请参考本README
+
 ## 🧪 测试
 
 ### 一键测试
@@ -293,6 +305,29 @@ DATABASE_URL="sqlite:///./test.db" python3 -m pytest tests/ -v
 - 📋 视频列表与详情页
 - 🔁 播放列表功能
 - 👤 用户认证与播放历史
+
+## 🆕 最近更新
+
+### v1.1.0 更新内容
+
+#### 🎨 界面优化
+- **视频/音乐管理页面**: 新增卡片视图和列表视图切换功能，用户可根据偏好选择展示方式
+- **分组管理页面**: 改为表格形式展示分组信息，信息更清晰直观
+- **个人中心页面**: 优化为左右分栏布局，左侧显示用户信息，右侧显示密码修改表单
+
+#### 🔧 功能调整
+- **登录页面**: 移除登录页面的账号信息显示，账号信息统一在README中说明
+- **播放记录页面**: 简化界面，移除在线视频和本地视频切换按钮，统一展示播放历史
+
+#### 🧹 代码优化
+- 清理未使用的代码和调试日志
+- 优化组件结构和样式代码
+- **音乐管理模块拆分**: 将 MusicManagement.vue 拆分为多个独立组件，提高代码可维护性
+  - `MusicUploadModal.vue` - 音乐上传模态框
+  - `MusicEditModal.vue` - 音乐名称编辑模态框
+  - `MusicChangeGroupModal.vue` - 分组切换模态框
+  - `MusicDeleteModal.vue` - 删除确认模态框
+  - `MusicPlayerModal.vue` - 音乐播放器模态框
 
 ## 🎨 设计亮点
 - 渐变背景与现代卡片设计

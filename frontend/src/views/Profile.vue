@@ -1,133 +1,139 @@
 <template>
   <div class="profile-container">
-    <!-- User Info Card -->
-    <div class="profile-card">
-      <div class="profile-header">
-        <div class="avatar-section">
-          <div class="avatar-wrapper" @click="triggerAvatarUpload">
-            <img v-if="authStore.avatarUrl" :src="authStore.avatarUrl" alt="avatar" class="avatar-img">
-            <div v-else class="avatar-placeholder">
-              <span>{{ authStore.userInitial }}</span>
+    <div class="profile-layout">
+      <!-- Left: User Info Card -->
+      <div class="profile-left">
+        <div class="profile-card">
+          <div class="profile-header">
+            <div class="avatar-section">
+              <div class="avatar-wrapper" @click="triggerAvatarUpload">
+                <img v-if="authStore.avatarUrl" :src="authStore.avatarUrl" alt="avatar" class="avatar-img">
+                <div v-else class="avatar-placeholder">
+                  <span>{{ authStore.userInitial }}</span>
+                </div>
+                <div class="avatar-overlay">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+                    <circle cx="12" cy="13" r="4"/>
+                  </svg>
+                  <span>更换头像</span>
+                </div>
+              </div>
+              <input
+                ref="avatarInput"
+                type="file"
+                accept="image/*"
+                hidden
+                @change="handleAvatarChange"
+              >
             </div>
-            <div class="avatar-overlay">
+
+            <div class="user-info">
+              <h2 class="username">{{ authStore.currentUser?.username }}</h2>
+              <p class="user-email">{{ authStore.currentUser?.email }}</p>
+              <span class="user-badge">管理员</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right: Password Change Section -->
+      <div class="profile-right">
+        <div class="section-card">
+          <div class="section-header">
+            <div class="section-icon">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
-                <circle cx="12" cy="13" r="4"/>
+                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
               </svg>
-              <span>更换头像</span>
+            </div>
+            <div class="section-title">
+              <h3>修改密码</h3>
+              <p>更改您的登录密码</p>
             </div>
           </div>
-          <input
-            ref="avatarInput"
-            type="file"
-            accept="image/*"
-            hidden
-            @change="handleAvatarChange"
-          >
-        </div>
 
-        <div class="user-info">
-          <h2 class="username">{{ authStore.currentUser?.username }}</h2>
-          <p class="user-email">{{ authStore.currentUser?.email }}</p>
-          <span class="user-badge">管理员</span>
-        </div>
-      </div>
-    </div>
+          <div class="form-content">
+            <div class="form-group">
+              <label>当前密码</label>
+              <div class="input-wrapper">
+                <input
+                  :type="showCurrentPassword ? 'text' : 'password'"
+                  v-model="passwordForm.currentPassword"
+                  placeholder="请输入当前密码"
+                >
+                <button class="toggle-btn" @click="showCurrentPassword = !showCurrentPassword">
+                  <svg v-if="showCurrentPassword" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                    <circle cx="12" cy="12" r="3"/>
+                  </svg>
+                  <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/>
+                    <line x1="1" y1="1" x2="23" y2="23"/>
+                  </svg>
+                </button>
+              </div>
+            </div>
 
-    <!-- Password Change Section -->
-    <div class="section-card">
-      <div class="section-header">
-        <div class="section-icon">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
-            <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
-          </svg>
-        </div>
-        <div class="section-title">
-          <h3>修改密码</h3>
-          <p>更改您的登录密码</p>
-        </div>
-      </div>
+            <div class="form-group">
+              <label>新密码</label>
+              <div class="input-wrapper">
+                <input
+                  :type="showNewPassword ? 'text' : 'password'"
+                  v-model="passwordForm.newPassword"
+                  placeholder="请输入新密码（至少6位）"
+                >
+                <button class="toggle-btn" @click="showNewPassword = !showNewPassword">
+                  <svg v-if="showNewPassword" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                    <circle cx="12" cy="12" r="3"/>
+                  </svg>
+                  <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/>
+                    <line x1="1" y1="1" x2="23" y2="23"/>
+                  </svg>
+                </button>
+              </div>
+            </div>
 
-      <div class="form-content">
-        <div class="form-group">
-          <label>当前密码</label>
-          <div class="input-wrapper">
-            <input
-              :type="showCurrentPassword ? 'text' : 'password'"
-              v-model="passwordForm.currentPassword"
-              placeholder="请输入当前密码"
+            <div class="form-group">
+              <label>确认新密码</label>
+              <div class="input-wrapper">
+                <input
+                  :type="showConfirmPassword ? 'text' : 'password'"
+                  v-model="passwordForm.confirmPassword"
+                  placeholder="请再次输入新密码"
+                >
+                <button class="toggle-btn" @click="showConfirmPassword = !showConfirmPassword">
+                  <svg v-if="showConfirmPassword" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                    <circle cx="12" cy="12" r="3"/>
+                  </svg>
+                  <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/>
+                    <line x1="1" y1="1" x2="23" y2="23"/>
+                  </svg>
+                </button>
+              </div>
+            </div>
+
+            <div class="password-strength" v-if="passwordForm.newPassword">
+              <div class="strength-bar">
+                <div class="strength-fill" :style="{ width: passwordStrength + '%', background: strengthColor }"></div>
+              </div>
+              <span class="strength-text" :style="{ color: strengthColor }">{{ strengthText }}</span>
+            </div>
+
+            <button
+              class="submit-btn"
+              :disabled="!isPasswordFormValid || isUpdatingPassword"
+              @click="updatePassword"
             >
-            <button class="toggle-btn" @click="showCurrentPassword = !showCurrentPassword">
-              <svg v-if="showCurrentPassword" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
-                <circle cx="12" cy="12" r="3"/>
-              </svg>
-              <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/>
-                <line x1="1" y1="1" x2="23" y2="23"/>
-              </svg>
+              <span v-if="isUpdatingPassword" class="btn-spinner"></span>
+              <span v-else>修改密码</span>
             </button>
           </div>
         </div>
-
-        <div class="form-group">
-          <label>新密码</label>
-          <div class="input-wrapper">
-            <input
-              :type="showNewPassword ? 'text' : 'password'"
-              v-model="passwordForm.newPassword"
-              placeholder="请输入新密码（至少6位）"
-            >
-            <button class="toggle-btn" @click="showNewPassword = !showNewPassword">
-              <svg v-if="showNewPassword" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
-                <circle cx="12" cy="12" r="3"/>
-              </svg>
-              <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/>
-                <line x1="1" y1="1" x2="23" y2="23"/>
-              </svg>
-            </button>
-          </div>
-        </div>
-
-        <div class="form-group">
-          <label>确认新密码</label>
-          <div class="input-wrapper">
-            <input
-              :type="showConfirmPassword ? 'text' : 'password'"
-              v-model="passwordForm.confirmPassword"
-              placeholder="请再次输入新密码"
-            >
-            <button class="toggle-btn" @click="showConfirmPassword = !showConfirmPassword">
-              <svg v-if="showConfirmPassword" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
-                <circle cx="12" cy="12" r="3"/>
-              </svg>
-              <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/>
-                <line x1="1" y1="1" x2="23" y2="23"/>
-              </svg>
-            </button>
-          </div>
-        </div>
-
-        <div class="password-strength" v-if="passwordForm.newPassword">
-          <div class="strength-bar">
-            <div class="strength-fill" :style="{ width: passwordStrength + '%', background: strengthColor }"></div>
-          </div>
-          <span class="strength-text" :style="{ color: strengthColor }">{{ strengthText }}</span>
-        </div>
-
-        <button
-          class="submit-btn"
-          :disabled="!isPasswordFormValid || isUpdatingPassword"
-          @click="updatePassword"
-        >
-          <span v-if="isUpdatingPassword" class="btn-spinner"></span>
-          <span v-else>修改密码</span>
-        </button>
       </div>
     </div>
 
@@ -274,8 +280,23 @@ function showToast(message, type = 'success') {
 
 <style lang="scss" scoped>
 .profile-container {
-  max-width: 600px;
-  margin: 0 auto;
+  min-height: 100%;
+}
+
+.profile-layout {
+  display: grid;
+  grid-template-columns: 1fr 1.5fr;
+  gap: 24px;
+  align-items: start;
+}
+
+.profile-left {
+  position: sticky;
+  top: 24px;
+}
+
+.profile-right {
+  min-width: 0;
 }
 
 .profile-card {
@@ -283,13 +304,14 @@ function showToast(message, type = 'success') {
   border: 1px solid rgba(99, 102, 241, 0.15);
   border-radius: 20px;
   padding: 32px;
-  margin-bottom: 24px;
 }
 
 .profile-header {
   display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: 24px;
+  text-align: center;
+  gap: 20px;
 
   .avatar-section {
     flex-shrink: 0;
@@ -297,8 +319,8 @@ function showToast(message, type = 'success') {
 
   .avatar-wrapper {
     position: relative;
-    width: 100px;
-    height: 100px;
+    width: 120px;
+    height: 120px;
     border-radius: 50%;
     overflow: hidden;
     cursor: pointer;
@@ -318,7 +340,7 @@ function showToast(message, type = 'success') {
       justify-content: center;
 
       span {
-        font-size: 2.5rem;
+        font-size: 3rem;
         font-weight: 700;
         color: white;
       }
@@ -339,14 +361,14 @@ function showToast(message, type = 'success') {
       transition: opacity 0.25s ease;
 
       svg {
-        width: 24px;
-        height: 24px;
+        width: 28px;
+        height: 28px;
         color: white;
-        margin-bottom: 4px;
+        margin-bottom: 6px;
       }
 
       span {
-        font-size: 0.75rem;
+        font-size: 0.85rem;
         color: white;
       }
     }
@@ -361,7 +383,7 @@ function showToast(message, type = 'success') {
       font-size: 1.5rem;
       font-weight: 700;
       color: #f8fafc;
-      margin-bottom: 4px;
+      margin-bottom: 6px;
     }
 
     .user-email {
@@ -372,11 +394,11 @@ function showToast(message, type = 'success') {
 
     .user-badge {
       display: inline-block;
-      padding: 4px 12px;
+      padding: 6px 16px;
       background: linear-gradient(135deg, rgba(99, 102, 241, 0.2) 0%, rgba(139, 92, 246, 0.15) 100%);
       border: 1px solid rgba(99, 102, 241, 0.3);
       border-radius: 20px;
-      font-size: 0.75rem;
+      font-size: 0.8rem;
       color: #a5b4fc;
       font-weight: 500;
     }
@@ -603,6 +625,30 @@ function showToast(message, type = 'success') {
   to {
     transform: translateX(0);
     opacity: 1;
+  }
+}
+
+@media (max-width: 900px) {
+  .profile-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .profile-left {
+    position: static;
+  }
+
+  .profile-header {
+    flex-direction: row;
+    text-align: left;
+  }
+
+  .avatar-wrapper {
+    width: 100px;
+    height: 100px;
+
+    .avatar-placeholder span {
+      font-size: 2.5rem;
+    }
   }
 }
 

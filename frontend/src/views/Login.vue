@@ -64,9 +64,6 @@
         </button>
       </form>
 
-      <div class="login-footer">
-        <p>默认账号: admin / 默认密码: 123456</p>
-      </div>
     </div>
 
     <div class="login-background">
