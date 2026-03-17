@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Depends, HTTPException, status, File, UploadFile
+from fastapi import FastAPI, Depends, HTTPException, status, File, UploadFile, Form
 from fastapi.staticfiles import StaticFiles
 import os
 import shutil
@@ -17,7 +17,13 @@ models.Base.metadata.create_all(bind=database.engine)
 app = FastAPI(title="Video Player API")
 
 UPLOAD_DIR = "/app/uploads"
-os.makedirs(UPLOAD_DIR, exist_ok=True)
+VIDEOS_DIR = os.path.join(UPLOAD_DIR, "videos")
+MUSIC_DIR = os.path.join(UPLOAD_DIR, "music")
+IMAGES_DIR = os.path.join(UPLOAD_DIR, "images")
+
+os.makedirs(VIDEOS_DIR, exist_ok=True)
+os.makedirs(MUSIC_DIR, exist_ok=True)
+os.makedirs(IMAGES_DIR, exist_ok=True)
 
 app.mount("/uploads", StaticFiles(directory=UPLOAD_DIR), name="uploads")
 
@@ -31,7 +37,6 @@ app.add_middleware(
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
-# 初始化默认用户
 def init_default_user(db: Session):
     """初始化默认用户 admin/123456"""
     default_user = db.query(models.User).filter(models.User.username == "admin").first()
@@ -47,7 +52,6 @@ def init_default_user(db: Session):
         db.commit()
         print("Default user 'admin' created with password '123456'")
 
-# 应用启动时初始化默认用户
 @app.on_event("startup")
 def startup_event():
     db = database.SessionLocal()
@@ -88,7 +92,7 @@ class PlayHistoryResponse(BaseModel):
 class LocalPlayHistoryCreate(BaseModel):
     video_name: str
     video_format: str
-    file_info: str  # JSON string
+    file_info: str
 
 class LocalPlayHistoryResponse(BaseModel):
     id: int
@@ -100,20 +104,41 @@ class LocalPlayHistoryResponse(BaseModel):
     class Config:
         from_attributes = True
 
+class GroupCreate(BaseModel):
+    name: str
+    description: Optional[str] = None
+
+class GroupUpdate(BaseModel):
+    name: Optional[str] = None
+    description: Optional[str] = None
+
+class GroupResponse(BaseModel):
+    id: int
+    name: str
+    description: Optional[str] = None
+    created_at: str
+
+    class Config:
+        from_attributes = True
+
 class VideoResponse(BaseModel):
     id: int
     filename: str
     original_name: str
     url: str
     format: str
+    media_type: str
     size: int
+    group_id: Optional[int] = None
+    group_name: Optional[str] = None
     created_at: str
 
     class Config:
         from_attributes = True
 
 class VideoUpdate(BaseModel):
-    name: str
+    name: Optional[str] = None
+    group_id: Optional[int] = None
 
 async def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(database.get_db)):
     credentials_exception = HTTPException(
@@ -173,11 +198,9 @@ def update_password(
     current_user: models.User = Depends(get_current_user),
     db: Session = Depends(database.get_db)
 ):
-    # Verify current password
     if not auth.verify_password(password_update.current_password, current_user.hashed_password):
         raise HTTPException(status_code=400, detail="Current password is incorrect")
     
-    # Update password
     current_user.hashed_password = auth.get_password_hash(password_update.new_password)
     db.commit()
     return {"message": "Password updated successfully"}
@@ -195,13 +218,12 @@ async def upload_avatar(
     
     file_ext = os.path.splitext(file.filename)[1] if file.filename else ".jpg"
     unique_filename = f"avatar_{current_user.id}_{uuid.uuid4()}{file_ext}"
-    file_path = os.path.join(UPLOAD_DIR, unique_filename)
+    file_path = os.path.join(IMAGES_DIR, unique_filename)
     
     with open(file_path, "wb") as buffer:
         shutil.copyfileobj(file.file, buffer)
     
-    # 更新用户头像URL
-    current_user.avatar_url = f"/uploads/{unique_filename}"
+    current_user.avatar_url = f"/uploads/images/{unique_filename}"
     db.commit()
     
     return {
@@ -294,7 +316,6 @@ def clear_play_history(
     return {"message": "All history cleared successfully"}
 
 
-# Local Play History APIs
 @app.post("/local-history", response_model=LocalPlayHistoryResponse)
 def add_local_play_history(
     history: LocalPlayHistoryCreate,
@@ -382,34 +403,173 @@ def clear_local_play_history(
     return {"message": "All local history cleared successfully"}
 
 
-# Video Management APIs
-@app.post("/videos", response_model=VideoResponse)
-async def upload_video(
-    file: UploadFile = File(...),
+@app.post("/groups", response_model=GroupResponse)
+def create_group(
+    group: GroupCreate,
     current_user: models.User = Depends(get_current_user),
     db: Session = Depends(database.get_db)
 ):
-    """上传视频文件"""
-    if not file.content_type or not file.content_type.startswith("video/"):
-        raise HTTPException(status_code=400, detail="File must be a video")
+    """创建分组"""
+    new_group = models.MediaGroup(
+        user_id=current_user.id,
+        name=group.name,
+        description=group.description
+    )
+    db.add(new_group)
+    db.commit()
+    db.refresh(new_group)
     
-    file_ext = os.path.splitext(file.filename)[1] if file.filename else ".mp4"
+    return GroupResponse(
+        id=new_group.id,
+        name=new_group.name,
+        description=new_group.description,
+        created_at=new_group.created_at.isoformat() if new_group.created_at else ""
+    )
+
+
+@app.get("/groups", response_model=List[GroupResponse])
+def get_groups(
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(database.get_db)
+):
+    """获取当前用户的所有分组"""
+    groups = db.query(models.MediaGroup).filter(
+        models.MediaGroup.user_id == current_user.id
+    ).order_by(models.MediaGroup.created_at.desc()).all()
+    
+    response = []
+    for group in groups:
+        response.append(GroupResponse(
+            id=group.id,
+            name=group.name,
+            description=group.description,
+            created_at=group.created_at.isoformat() if group.created_at else ""
+        ))
+    return response
+
+
+@app.put("/groups/{group_id}", response_model=GroupResponse)
+def update_group(
+    group_id: int,
+    group_update: GroupUpdate,
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(database.get_db)
+):
+    """更新分组"""
+    group = db.query(models.MediaGroup).filter(
+        models.MediaGroup.id == group_id,
+        models.MediaGroup.user_id == current_user.id
+    ).first()
+    
+    if not group:
+        raise HTTPException(status_code=404, detail="Group not found")
+    
+    if group_update.name is not None:
+        group.name = group_update.name
+    if group_update.description is not None:
+        group.description = group_update.description
+    
+    db.commit()
+    db.refresh(group)
+    
+    return GroupResponse(
+        id=group.id,
+        name=group.name,
+        description=group.description,
+        created_at=group.created_at.isoformat() if group.created_at else ""
+    )
+
+
+@app.delete("/groups/{group_id}")
+def delete_group(
+    group_id: int,
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(database.get_db)
+):
+    """删除分组"""
+    group = db.query(models.MediaGroup).filter(
+        models.MediaGroup.id == group_id,
+        models.MediaGroup.user_id == current_user.id
+    ).first()
+    
+    if not group:
+        raise HTTPException(status_code=404, detail="Group not found")
+    
+    db.query(models.Video).filter(
+        models.Video.group_id == group_id
+    ).update({"group_id": None})
+    
+    db.delete(group)
+    db.commit()
+    
+    return {"message": "Group deleted successfully"}
+
+
+def get_media_type_from_content_type(content_type: str) -> str:
+    """根据 content-type 判断媒体类型"""
+    if content_type.startswith("video/"):
+        return "video"
+    elif content_type.startswith("audio/"):
+        return "music"
+    elif content_type.startswith("image/"):
+        return "image"
+    return "video"
+
+
+def get_storage_dir(media_type: str) -> str:
+    """根据媒体类型获取存储目录"""
+    if media_type == "video":
+        return VIDEOS_DIR
+    elif media_type == "music":
+        return MUSIC_DIR
+    elif media_type == "image":
+        return IMAGES_DIR
+    return VIDEOS_DIR
+
+
+@app.post("/videos", response_model=VideoResponse)
+async def upload_video(
+    file: UploadFile = File(...),
+    group_id: Optional[int] = Form(None),
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(database.get_db)
+):
+    """上传媒体文件（视频/音乐）"""
+    if not file.content_type:
+        raise HTTPException(status_code=400, detail="Unknown file type")
+    
+    media_type = get_media_type_from_content_type(file.content_type)
+    if media_type not in ["video", "music"]:
+        raise HTTPException(status_code=400, detail="File must be a video or audio file")
+    
+    if group_id:
+        group = db.query(models.MediaGroup).filter(
+            models.MediaGroup.id == group_id,
+            models.MediaGroup.user_id == current_user.id
+        ).first()
+        if not group:
+            raise HTTPException(status_code=404, detail="Group not found")
+    
+    target_dir = get_storage_dir(media_type)
+    file_ext = os.path.splitext(file.filename)[1] if file.filename else (".mp4" if media_type == "video" else ".mp3")
     unique_filename = f"{uuid.uuid4()}{file_ext}"
-    file_path = os.path.join(UPLOAD_DIR, unique_filename)
+    file_path = os.path.join(target_dir, unique_filename)
     
-    # 获取文件大小
     file_size = 0
     with open(file_path, "wb") as buffer:
         shutil.copyfileobj(file.file, buffer)
         file_size = os.path.getsize(file_path)
     
-    # 保存到数据库
+    url_path = f"/uploads/{media_type}s/{unique_filename}" if media_type != "image" else f"/uploads/images/{unique_filename}"
+    
     new_video = models.Video(
         user_id=current_user.id,
+        group_id=group_id,
         filename=unique_filename,
         original_name=file.filename or "unnamed",
-        url=f"/uploads/{unique_filename}",
+        url=url_path,
         format=file_ext.lstrip("."),
+        media_type=media_type,
         size=file_size
     )
     db.add(new_video)
@@ -422,20 +582,33 @@ async def upload_video(
         original_name=new_video.original_name,
         url=new_video.url,
         format=new_video.format,
+        media_type=new_video.media_type,
         size=new_video.size,
+        group_id=new_video.group_id,
+        group_name=new_video.group.name if new_video.group else None,
         created_at=new_video.created_at.isoformat() if new_video.created_at else ""
     )
 
 
 @app.get("/videos", response_model=List[VideoResponse])
 def get_videos(
+    media_type: Optional[str] = None,
+    group_id: Optional[int] = None,
     current_user: models.User = Depends(get_current_user),
     db: Session = Depends(database.get_db)
 ):
-    """获取当前用户的所有视频"""
-    videos = db.query(models.Video).filter(
+    """获取当前用户的媒体文件"""
+    query = db.query(models.Video).filter(
         models.Video.user_id == current_user.id
-    ).order_by(models.Video.created_at.desc()).all()
+    )
+    
+    if media_type:
+        query = query.filter(models.Video.media_type == media_type)
+    
+    if group_id:
+        query = query.filter(models.Video.group_id == group_id)
+    
+    videos = query.order_by(models.Video.created_at.desc()).all()
     
     response = []
     for video in videos:
@@ -445,7 +618,10 @@ def get_videos(
             original_name=video.original_name,
             url=video.url,
             format=video.format,
+            media_type=video.media_type,
             size=video.size,
+            group_id=video.group_id,
+            group_name=video.group.name if video.group else None,
             created_at=video.created_at.isoformat() if video.created_at else ""
         ))
     return response
@@ -458,7 +634,7 @@ def update_video(
     current_user: models.User = Depends(get_current_user),
     db: Session = Depends(database.get_db)
 ):
-    """修改视频名称"""
+    """修改媒体文件名称"""
     video = db.query(models.Video).filter(
         models.Video.id == video_id,
         models.Video.user_id == current_user.id
@@ -467,7 +643,9 @@ def update_video(
     if not video:
         raise HTTPException(status_code=404, detail="Video not found")
     
-    video.original_name = video_update.name
+    if video_update.name is not None:
+        video.original_name = video_update.name
+    
     db.commit()
     db.refresh(video)
     
@@ -477,7 +655,54 @@ def update_video(
         original_name=video.original_name,
         url=video.url,
         format=video.format,
+        media_type=video.media_type,
         size=video.size,
+        group_id=video.group_id,
+        group_name=video.group.name if video.group else None,
+        created_at=video.created_at.isoformat() if video.created_at else ""
+    )
+
+
+@app.put("/videos/{video_id}/group")
+def change_video_group(
+    video_id: int,
+    group_id: Optional[int] = None,
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(database.get_db)
+):
+    """切换媒体文件的分组"""
+    video = db.query(models.Video).filter(
+        models.Video.id == video_id,
+        models.Video.user_id == current_user.id
+    ).first()
+    
+    if not video:
+        raise HTTPException(status_code=404, detail="Video not found")
+    
+    if group_id:
+        group = db.query(models.MediaGroup).filter(
+            models.MediaGroup.id == group_id,
+            models.MediaGroup.user_id == current_user.id
+        ).first()
+        if not group:
+            raise HTTPException(status_code=404, detail="Group not found")
+        video.group_id = group_id
+    else:
+        video.group_id = None
+    
+    db.commit()
+    db.refresh(video)
+    
+    return VideoResponse(
+        id=video.id,
+        filename=video.filename,
+        original_name=video.original_name,
+        url=video.url,
+        format=video.format,
+        media_type=video.media_type,
+        size=video.size,
+        group_id=video.group_id,
+        group_name=video.group.name if video.group else None,
         created_at=video.created_at.isoformat() if video.created_at else ""
     )
 
@@ -488,7 +713,7 @@ def delete_video(
     current_user: models.User = Depends(get_current_user),
     db: Session = Depends(database.get_db)
 ):
-    """删除视频"""
+    """删除媒体文件"""
     video = db.query(models.Video).filter(
         models.Video.id == video_id,
         models.Video.user_id == current_user.id
@@ -497,8 +722,8 @@ def delete_video(
     if not video:
         raise HTTPException(status_code=404, detail="Video not found")
     
-    # 删除物理文件
-    file_path = os.path.join(UPLOAD_DIR, video.filename)
+    target_dir = get_storage_dir(video.media_type)
+    file_path = os.path.join(target_dir, video.filename)
     if os.path.exists(file_path):
         os.remove(file_path)
     
