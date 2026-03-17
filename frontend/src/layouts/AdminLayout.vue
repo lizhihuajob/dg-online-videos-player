@@ -92,6 +92,16 @@ const VideoIcon = () => h('svg', { viewBox: '0 0 24 24', fill: 'none', stroke: '
   h('line', { x1: '17', y1: '7', x2: '22', y2: '7' })
 ])
 
+const MusicIcon = () => h('svg', { viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', 'stroke-width': '2' }, [
+  h('path', { d: 'M9 18V5l12-2v13' }),
+  h('circle', { cx: '6', cy: '18', r: '3' }),
+  h('circle', { cx: '18', cy: '16', r: '3' })
+])
+
+const GroupIcon = () => h('svg', { viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', 'stroke-width': '2' }, [
+  h('path', { d: 'M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z' })
+])
+
 const HistoryIcon = () => h('svg', { viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', 'stroke-width': '2' }, [
   h('circle', { cx: '12', cy: '12', r: '10' }),
   h('polyline', { points: '12 6 12 12 16 14' })
@@ -104,6 +114,8 @@ const UserIcon = () => h('svg', { viewBox: '0 0 24 24', fill: 'none', stroke: 'c
 
 const menuItems = [
   { name: '视频管理', path: '/', icon: VideoIcon },
+  { name: '音乐管理', path: '/music', icon: MusicIcon },
+  { name: '分组管理', path: '/groups', icon: GroupIcon },
   { name: '播放记录', path: '/history', icon: HistoryIcon },
   { name: '个人中心', path: '/profile', icon: UserIcon }
 ]

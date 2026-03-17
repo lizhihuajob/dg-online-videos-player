@@ -3,6 +3,8 @@ import { useAuthStore } from '@/stores/auth.js'
 import Login from '@/views/Login.vue'
 import AdminLayout from '@/layouts/AdminLayout.vue'
 import VideoManagement from '@/views/VideoManagement.vue'
+import MusicManagement from '@/views/MusicManagement.vue'
+import GroupManagement from '@/views/GroupManagement.vue'
 import PlayHistory from '@/views/PlayHistory.vue'
 import Profile from '@/views/Profile.vue'
 
@@ -21,6 +23,16 @@ const routes = [
         path: '',
         name: 'VideoManagement',
         component: VideoManagement
+      },
+      {
+        path: '/music',
+        name: 'MusicManagement',
+        component: MusicManagement
+      },
+      {
+        path: '/groups',
+        name: 'GroupManagement',
+        component: GroupManagement
       },
       {
         path: '/history',
