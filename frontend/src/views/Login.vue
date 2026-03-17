@@ -63,10 +63,6 @@
           <span v-else>登 录</span>
         </button>
       </form>
-
-      <div class="login-footer">
-        <p>默认账号: admin / 默认密码: 123456</p>
-      </div>
     </div>
 
     <div class="login-background">
@@ -352,19 +348,7 @@ async function handleLogin() {
   }
 }
 
-.login-footer {
-  margin-top: 32px;
-  padding-top: 24px;
-  border-top: 1px solid rgba(99, 102, 241, 0.1);
-  text-align: center;
-
-  p {
-    font-size: 0.85rem;
-    color: #64748b;
-  }
-}
-
-@keyframes spin {
+@media (max-width: 480px) {
   to { transform: rotate(360deg); }
 }
 

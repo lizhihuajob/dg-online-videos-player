@@ -30,44 +30,49 @@
       </div>
     </div>
 
-    <!-- Group Grid -->
-    <div v-if="filteredGroups.length > 0" class="group-grid">
+    <!-- Group Table -->
+    <div v-if="filteredGroups.length > 0" class="group-table">
+      <div class="table-header">
+        <span class="col-name">分组名称</span>
+        <span class="col-type">类型</span>
+        <span class="col-description">描述</span>
+        <span class="col-date">创建时间</span>
+        <span class="col-actions">操作</span>
+      </div>
       <div
         v-for="group in filteredGroups"
         :key="group.id"
-        class="group-card"
+        class="table-row"
       >
-        <div class="group-icon" :class="group.group_type">
-          <svg v-if="group.group_type === 'video'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <rect x="2" y="2" width="20" height="20" rx="2.18" ry="2.18"/>
-            <line x1="7" y1="2" x2="7" y2="22"/>
-            <line x1="17" y1="2" x2="17" y2="22"/>
-            <line x1="2" y1="12" x2="22" y2="12"/>
-          </svg>
-          <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M9 18V5l12-2v13"/>
-            <circle cx="6" cy="18" r="3"/>
-            <circle cx="18" cy="16" r="3"/>
-          </svg>
-        </div>
-
-        <div class="group-info">
-          <h3 class="group-name" :title="group.name">{{ group.name }}</h3>
-          <p v-if="group.description" class="group-description">{{ group.description }}</p>
-          <div class="group-meta">
-            <span class="group-type">{{ group.group_type === 'video' ? '视频' : '音乐' }}</span>
-            <span class="group-date">{{ formatDate(group.created_at) }}</span>
+        <div class="col-name">
+          <div class="group-icon-small" :class="group.group_type">
+            <svg v-if="group.group_type === 'video'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="2" y="2" width="20" height="20" rx="2.18" ry="2.18"/>
+              <line x1="7" y1="2" x2="7" y2="22"/>
+              <line x1="17" y1="2" x2="17" y2="22"/>
+              <line x1="2" y1="12" x2="22" y2="12"/>
+            </svg>
+            <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M9 18V5l12-2v13"/>
+              <circle cx="6" cy="18" r="3"/>
+              <circle cx="18" cy="16" r="3"/>
+            </svg>
           </div>
+          <span class="group-name-text" :title="group.name">{{ group.name }}</span>
         </div>
-
-        <div class="group-actions">
-          <button class="action-btn edit" @click="editGroup(group)" title="修改">
+        <span class="col-type">
+          <span class="type-badge" :class="group.group_type">{{ group.group_type === 'video' ? '视频' : '音乐' }}</span>
+        </span>
+        <span class="col-description" :title="group.description">{{ group.description || '-' }}</span>
+        <span class="col-date">{{ formatDate(group.created_at) }}</span>
+        <div class="col-actions">
+          <button class="action-btn-small edit" @click="editGroup(group)" title="修改">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
               <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
             </svg>
           </button>
-          <button class="action-btn delete" @click="confirmDelete(group)" title="删除">
+          <button class="action-btn-small delete" @click="confirmDelete(group)" title="删除">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <polyline points="3 6 5 6 21 6"/>
               <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
@@ -569,127 +574,171 @@ function showToast(message, type = 'success') {
   }
 }
 
-.group-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-  gap: 24px;
-}
-
-.group-card {
-  background: rgba(30, 41, 59, 0.6);
+.group-table {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  background: rgba(99, 102, 241, 0.1);
+  border-radius: 12px;
+  overflow: hidden;
   border: 1px solid rgba(99, 102, 241, 0.15);
-  border-radius: 16px;
-  padding: 24px;
-  display: flex;
-  align-items: flex-start;
-  gap: 16px;
-  transition: all 0.3s ease;
 
-  &:hover {
-    transform: translateY(-4px);
-    border-color: rgba(99, 102, 241, 0.3);
-    box-shadow: 0 12px 40px -10px rgba(99, 102, 241, 0.2);
-  }
-}
-
-.group-icon {
-  width: 56px;
-  height: 56px;
-  border-radius: 14px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-
-  &.video {
-    background: rgba(99, 102, 241, 0.15);
-    color: #6366f1;
-  }
-
-  &.music {
-    background: rgba(16, 185, 129, 0.15);
-    color: #10b981;
-  }
-
-  svg {
-    width: 28px;
-    height: 28px;
-  }
-}
-
-.group-info {
-  flex: 1;
-  min-width: 0;
-
-  .group-name {
-    font-size: 1.05rem;
+  .table-header {
+    display: grid;
+    grid-template-columns: 2fr 100px 2fr 140px 120px;
+    gap: 16px;
+    padding: 14px 20px;
+    background: rgba(30, 41, 59, 0.8);
+    font-size: 0.85rem;
     font-weight: 600;
-    color: #f8fafc;
-    margin-bottom: 6px;
+    color: #94a3b8;
+
+    @media (max-width: 768px) {
+      display: none;
+    }
+  }
+
+  .table-row {
+    display: grid;
+    grid-template-columns: 2fr 100px 2fr 140px 120px;
+    gap: 16px;
+    padding: 14px 20px;
+    background: rgba(30, 41, 59, 0.6);
+    align-items: center;
+    transition: all 0.2s ease;
+
+    &:hover {
+      background: rgba(30, 41, 59, 0.8);
+    }
+
+    @media (max-width: 768px) {
+      grid-template-columns: 1fr auto;
+      gap: 12px;
+
+      .col-name {
+        grid-column: 1;
+      }
+
+      .col-actions {
+        grid-column: 2;
+      }
+
+      .col-type, .col-description, .col-date {
+        display: none;
+      }
+    }
+  }
+
+  .col-name {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-width: 0;
+
+    .group-icon-small {
+      width: 40px;
+      height: 40px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+
+      &.video {
+        background: rgba(99, 102, 241, 0.15);
+        color: #6366f1;
+      }
+
+      &.music {
+        background: rgba(16, 185, 129, 0.15);
+        color: #10b981;
+      }
+
+      svg {
+        width: 20px;
+        height: 20px;
+      }
+    }
+
+    .group-name-text {
+      font-size: 0.95rem;
+      font-weight: 500;
+      color: #f8fafc;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+  }
+
+  .col-type {
+    .type-badge {
+      display: inline-block;
+      padding: 4px 12px;
+      border-radius: 6px;
+      font-size: 0.8rem;
+      font-weight: 500;
+
+      &.video {
+        background: rgba(99, 102, 241, 0.15);
+        color: #a5b4fc;
+      }
+
+      &.music {
+        background: rgba(16, 185, 129, 0.15);
+        color: #34d399;
+      }
+    }
+  }
+
+  .col-description {
+    font-size: 0.85rem;
+    color: #94a3b8;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
   }
 
-  .group-description {
+  .col-date {
     font-size: 0.85rem;
-    color: #94a3b8;
-    margin-bottom: 10px;
-    display: -webkit-box;
-    -webkit-line-clamp: 2;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
-  }
-
-  .group-meta {
-    display: flex;
-    gap: 12px;
-    font-size: 0.8rem;
     color: #64748b;
-
-    .group-type {
-      padding: 2px 8px;
-      background: rgba(99, 102, 241, 0.1);
-      border-radius: 4px;
-      color: #a5b4fc;
-    }
   }
-}
 
-.group-actions {
-  display: flex;
-  gap: 8px;
-
-  .action-btn {
-    width: 36px;
-    height: 36px;
+  .col-actions {
     display: flex;
-    align-items: center;
-    justify-content: center;
-    background: rgba(15, 23, 42, 0.6);
-    border: 1px solid rgba(99, 102, 241, 0.15);
-    border-radius: 10px;
-    color: #94a3b8;
-    cursor: pointer;
-    transition: all 0.2s ease;
+    gap: 8px;
+    justify-content: flex-end;
 
-    svg {
-      width: 16px;
-      height: 16px;
-    }
+    .action-btn-small {
+      width: 32px;
+      height: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(15, 23, 42, 0.6);
+      border: 1px solid rgba(99, 102, 241, 0.15);
+      border-radius: 8px;
+      color: #94a3b8;
+      cursor: pointer;
+      transition: all 0.2s ease;
 
-    &:hover {
-      background: rgba(99, 102, 241, 0.1);
-      border-color: rgba(99, 102, 241, 0.3);
-    }
+      svg {
+        width: 14px;
+        height: 14px;
+      }
 
-    &.edit:hover {
-      color: #6366f1;
-    }
+      &:hover {
+        background: rgba(99, 102, 241, 0.1);
+        border-color: rgba(99, 102, 241, 0.3);
+      }
 
-    &.delete:hover {
-      color: #ef4444;
-      border-color: rgba(239, 68, 68, 0.3);
+      &.edit:hover {
+        color: #6366f1;
+      }
+
+      &.delete:hover {
+        color: #ef4444;
+        border-color: rgba(239, 68, 68, 0.3);
+      }
     }
   }
 }

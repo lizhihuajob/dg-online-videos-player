@@ -1,39 +1,12 @@
 <template>
   <div class="play-history">
-    <!-- Tabs -->
-    <div class="tabs">
-      <button
-        class="tab-btn"
-        :class="{ active: activeTab === 'online' }"
-        @click="activeTab = 'online'"
-      >
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
-          <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
-        </svg>
-        <span>在线视频</span>
-      </button>
-      <button
-        class="tab-btn"
-        :class="{ active: activeTab === 'local' }"
-        @click="activeTab = 'local'"
-      >
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-          <polyline points="17 8 12 3 7 8"/>
-          <line x1="12" y1="3" x2="12" y2="15"/>
-        </svg>
-        <span>本地视频</span>
-      </button>
-    </div>
-
     <!-- Toolbar -->
     <div class="toolbar">
       <div class="history-stats">
-        共 <strong>{{ activeTab === 'online' ? onlineHistory.length : localHistory.length }}</strong> 条记录
+        共 <strong>{{ onlineHistory.length }}</strong> 条记录
       </div>
       <button
-        v-if="(activeTab === 'online' && onlineHistory.length > 0) || (activeTab === 'local' && localHistory.length > 0)"
+        v-if="onlineHistory.length > 0"
         class="clear-btn"
         @click="confirmClear"
       >
@@ -45,8 +18,8 @@
       </button>
     </div>
 
-    <!-- Online History List -->
-    <div v-if="activeTab === 'online'" class="history-list">
+    <!-- History List -->
+    <div class="history-list">
       <div
         v-for="item in onlineHistory"
         :key="item.id"
@@ -89,53 +62,8 @@
             <line x1="12" y1="16" x2="12.01" y2="16"/>
           </svg>
         </div>
-        <h3>暂无在线视频记录</h3>
-        <p>您还没有播放过任何在线视频</p>
-      </div>
-    </div>
-
-    <!-- Local History List -->
-    <div v-else class="history-list">
-      <div
-        v-for="item in localHistory"
-        :key="item.id"
-        class="history-item"
-      >
-        <div class="item-icon local">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-            <polyline points="17 8 12 3 7 8"/>
-            <line x1="12" y1="3" x2="12" y2="15"/>
-          </svg>
-        </div>
-        <div class="item-content">
-          <h4 class="item-title" :title="item.video_name">{{ item.video_name }}</h4>
-          <div class="item-meta">
-            <span class="item-format">{{ item.video_format.toUpperCase() }}</span>
-            <span class="item-time">{{ formatTime(item.created_at) }}</span>
-          </div>
-          <p class="item-file-info">{{ formatFileInfo(item.file_info) }}</p>
-        </div>
-        <div class="item-actions">
-          <button class="action-btn delete" @click="confirmDelete(item)" title="删除">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <polyline points="3 6 5 6 21 6"/>
-              <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
-            </svg>
-          </button>
-        </div>
-      </div>
-
-      <div v-if="localHistory.length === 0 && !isLoading" class="empty-state">
-        <div class="empty-icon">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-            <circle cx="12" cy="12" r="10"/>
-            <line x1="12" y1="8" x2="12" y2="12"/>
-            <line x1="12" y1="16" x2="12.01" y2="16"/>
-          </svg>
-        </div>
-        <h3>暂无本地视频记录</h3>
-        <p>您还没有播放过任何本地视频</p>
+        <h3>暂无播放记录</h3>
+        <p>您还没有播放过任何视频</p>
       </div>
     </div>
 
@@ -237,16 +165,14 @@
 </template>
 
 <script setup>
-import { ref, onMounted, watch } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useAuthStore } from '@/stores/auth.js'
 import VideoPlayer from '@/components/VideoPlayer.vue'
 
 const authStore = useAuthStore()
 
 // State
-const activeTab = ref('online')
 const onlineHistory = ref([])
-const localHistory = ref([])
 const isLoading = ref(false)
 
 // Modal state
@@ -269,24 +195,13 @@ onMounted(() => {
   loadHistory()
 })
 
-watch(activeTab, () => {
-  loadHistory()
-})
-
 // Methods
 async function loadHistory() {
   isLoading.value = true
   try {
-    if (activeTab.value === 'online') {
-      const response = await authStore.apiRequest('/history')
-      if (response.ok) {
-        onlineHistory.value = await response.json()
-      }
-    } else {
-      const response = await authStore.apiRequest('/local-history')
-      if (response.ok) {
-        localHistory.value = await response.json()
-      }
+    const response = await authStore.apiRequest('/history')
+    if (response.ok) {
+      onlineHistory.value = await response.json()
     }
   } catch (err) {
     showToast('加载失败', 'error')
@@ -308,27 +223,6 @@ function formatTime(dateStr) {
   return date.toLocaleDateString('zh-CN', { year: 'numeric', month: 'short', day: 'numeric' })
 }
 
-function formatFileInfo(fileInfoStr) {
-  try {
-    const info = JSON.parse(fileInfoStr)
-    if (info.name && info.size) {
-      const size = formatSize(info.size)
-      return `${info.name} (${size})`
-    }
-    return fileInfoStr
-  } catch {
-    return fileInfoStr
-  }
-}
-
-function formatSize(bytes) {
-  if (bytes === 0) return '0 B'
-  const k = 1024
-  const sizes = ['B', 'KB', 'MB', 'GB']
-  const i = Math.floor(Math.log(bytes) / Math.log(k))
-  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]
-}
-
 // Clear handlers
 function confirmClear() {
   showClearModal.value = true
@@ -337,15 +231,10 @@ function confirmClear() {
 async function clearHistory() {
   isClearing.value = true
   try {
-    const endpoint = activeTab.value === 'online' ? '/history' : '/local-history'
-    const response = await authStore.apiRequest(endpoint, { method: 'DELETE' })
+    const response = await authStore.apiRequest('/history', { method: 'DELETE' })
 
     if (response.ok) {
-      if (activeTab.value === 'online') {
-        onlineHistory.value = []
-      } else {
-        localHistory.value = []
-      }
+      onlineHistory.value = []
       closeClearModal()
       showToast('清空成功', 'success')
     } else {
@@ -373,18 +262,10 @@ async function deleteHistory() {
 
   isDeleting.value = true
   try {
-    const endpoint = activeTab.value === 'online'
-      ? `/history/${itemToDelete.value.id}`
-      : `/local-history/${itemToDelete.value.id}`
-
-    const response = await authStore.apiRequest(endpoint, { method: 'DELETE' })
+    const response = await authStore.apiRequest(`/history/${itemToDelete.value.id}`, { method: 'DELETE' })
 
     if (response.ok) {
-      if (activeTab.value === 'online') {
-        onlineHistory.value = onlineHistory.value.filter(h => h.id !== itemToDelete.value.id)
-      } else {
-        localHistory.value = localHistory.value.filter(h => h.id !== itemToDelete.value.id)
-      }
+      onlineHistory.value = onlineHistory.value.filter(h => h.id !== itemToDelete.value.id)
       closeDeleteModal()
       showToast('删除成功', 'success')
     } else {
@@ -426,44 +307,6 @@ function showToast(message, type = 'success') {
 <style lang="scss" scoped>
 .play-history {
   min-height: 100%;
-}
-
-.tabs {
-  display: flex;
-  gap: 12px;
-  margin-bottom: 24px;
-
-  .tab-btn {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 12px 24px;
-    background: rgba(30, 41, 59, 0.6);
-    border: 1px solid rgba(99, 102, 241, 0.15);
-    border-radius: 12px;
-    color: #94a3b8;
-    font-size: 0.95rem;
-    font-weight: 500;
-    cursor: pointer;
-    transition: all 0.25s ease;
-
-    svg {
-      width: 18px;
-      height: 18px;
-    }
-
-    &:hover {
-      background: rgba(99, 102, 241, 0.1);
-      border-color: rgba(99, 102, 241, 0.3);
-      color: #c7d2fe;
-    }
-
-    &.active {
-      background: linear-gradient(135deg, rgba(99, 102, 241, 0.2) 0%, rgba(139, 92, 246, 0.15) 100%);
-      border-color: rgba(99, 102, 241, 0.4);
-      color: #f8fafc;
-    }
-  }
 }
 
 .toolbar {
