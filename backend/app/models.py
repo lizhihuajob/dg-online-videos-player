@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Text
+from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Text, BigInteger
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from .database import Base
@@ -10,10 +10,12 @@ class User(Base):
     username = Column(String(50), unique=True, index=True)
     email = Column(String(100), unique=True, index=True)
     hashed_password = Column(String(255))
+    avatar_url = Column(String(255), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     play_history = relationship("PlayHistory", back_populates="user", cascade="all, delete-orphan")
     local_play_history = relationship("LocalPlayHistory", back_populates="user", cascade="all, delete-orphan")
+    videos = relationship("Video", back_populates="user", cascade="all, delete-orphan")
 
 
 class PlayHistory(Base):
@@ -40,3 +42,19 @@ class LocalPlayHistory(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     user = relationship("User", back_populates="local_play_history")
+
+
+class Video(Base):
+    """用户上传的视频模型"""
+    __tablename__ = "videos"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    filename = Column(String(255), nullable=False)  # 存储的文件名
+    original_name = Column(String(255), nullable=False)  # 原始文件名
+    url = Column(String(255), nullable=False)  # 访问URL
+    format = Column(String(10), nullable=False)  # 视频格式
+    size = Column(BigInteger, default=0)  # 文件大小（字节）
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    user = relationship("User", back_populates="videos")
