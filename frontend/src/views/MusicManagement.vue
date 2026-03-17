@@ -1,18 +1,49 @@
 <template>
   <div class="music-management">
+    <!-- Toast Notification -->
+    <Transition name="toast">
+      <div v-if="toastMessage" :class="['toast', toastType]">
+        <svg v-if="toastType === 'success'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+          <polyline points="22 4 12 14.01 9 11.01"/>
+        </svg>
+        <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="10"/>
+          <line x1="12" y1="8" x2="12" y2="12"/>
+          <line x1="12" y1="16" x2="12.01" y2="16"/>
+        </svg>
+        <span>{{ toastMessage }}</span>
+      </div>
+    </Transition>
+
+    <!-- Header -->
+    <div class="page-header">
+      <h1 class="page-title">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M9 18V5l12-2v13"/>
+          <circle cx="6" cy="18" r="3"/>
+          <circle cx="18" cy="16" r="3"/>
+        </svg>
+        音乐管理
+      </h1>
+      <p class="page-subtitle">管理您的音乐文件</p>
+    </div>
+
     <!-- Toolbar -->
     <div class="toolbar">
       <div class="search-box">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <circle cx="11" cy="11" r="8"/>
-          <path d="M21 21l-4.35-4.35"/>
+          <line x1="21" y1="21" x2="16.65" y2="16.65"/>
         </svg>
         <input
-          type="text"
           v-model="searchQuery"
+          type="text"
           placeholder="搜索音乐..."
+          @input="handleSearch"
         >
       </div>
+
       <div class="toolbar-actions">
         <select v-model="selectedGroupId" class="filter-select" @change="loadMusic">
           <option :value="null">全部分组</option>
@@ -20,6 +51,22 @@
             {{ group.name }}
           </option>
         </select>
+        <button class="view-toggle-btn" @click="toggleViewMode" :title="viewMode === 'card' ? '切换列表视图' : '切换卡片视图'">
+          <svg v-if="viewMode === 'card'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="8" y1="6" x2="21" y2="6"/>
+            <line x1="8" y1="12" x2="21" y2="12"/>
+            <line x1="8" y1="18" x2="21" y2="18"/>
+            <line x1="3" y1="6" x2="3.01" y2="6"/>
+            <line x1="3" y1="12" x2="3.01" y2="12"/>
+            <line x1="3" y1="18" x2="3.01" y2="18"/>
+          </svg>
+          <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="3" y="3" width="7" height="7"/>
+            <rect x="14" y="3" width="7" height="7"/>
+            <rect x="14" y="14" width="7" height="7"/>
+            <rect x="3" y="14" width="7" height="7"/>
+          </svg>
+        </button>
         <button class="upload-btn" @click="showUploadModal = true">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M9 18V5l12-2v13"/>
@@ -31,63 +78,39 @@
       </div>
     </div>
 
-    <!-- Music Grid -->
-    <div v-if="filteredMusic.length > 0" class="music-grid">
-      <div
-        v-for="music in filteredMusic"
-        :key="music.id"
-        class="music-card"
-      >
-        <div class="music-icon">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-            <path d="M9 18V5l12-2v13"/>
-            <circle cx="6" cy="18" r="3"/>
-            <circle cx="18" cy="16" r="3"/>
-          </svg>
-        </div>
-
-        <div class="music-content">
-          <div class="music-info">
-            <h3 class="music-name" :title="music.original_name">{{ music.original_name }}</h3>
-            <div class="music-meta">
-              <span class="music-size">{{ formatSize(music.size) }}</span>
-              <span class="music-date">{{ formatDate(music.created_at) }}</span>
-            </div>
-            <div v-if="music.group_id" class="music-group">
-              <span class="group-badge">{{ getGroupName(music.group_id) }}</span>
-            </div>
-          </div>
-
-          <div class="music-actions">
-            <button class="action-btn edit" @click="editMusic(music)" title="修改名称">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
-                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
-              </svg>
-            </button>
-            <button class="action-btn group" @click="showChangeGroup(music)" title="切换分组">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
-              </svg>
-            </button>
-            <button class="action-btn play" @click="playMusic(music)" title="播放">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <polygon points="5 3 19 12 5 21 5 3"/>
-              </svg>
-            </button>
-            <button class="action-btn delete" @click="confirmDelete(music)" title="删除">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <polyline points="3 6 5 6 21 6"/>
-                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
-              </svg>
-            </button>
-          </div>
-        </div>
-      </div>
+    <!-- Loading State -->
+    <div v-if="isLoading" class="loading-state">
+      <div class="spinner"></div>
+      <p>加载中...</p>
     </div>
 
+    <!-- Music Grid (Card View) -->
+    <div v-else-if="filteredMusic.length > 0 && viewMode === 'card'" class="music-grid">
+      <MusicCard
+        v-for="music in filteredMusic"
+        :key="music.id"
+        :music="music"
+        :group-name="getGroupName(music.group_id)"
+        @edit="editMusic"
+        @change-group="showChangeGroup"
+        @play="playMusic"
+        @delete="confirmDelete"
+      />
+    </div>
+
+    <!-- Music List (List View) -->
+    <MusicList
+      v-else-if="filteredMusic.length > 0 && viewMode === 'list'"
+      :music-list="filteredMusic"
+      :get-group-name="getGroupName"
+      @edit="editMusic"
+      @change-group="showChangeGroup"
+      @play="playMusic"
+      @delete="confirmDelete"
+    />
+
     <!-- Empty State -->
-    <div v-else-if="!isLoading" class="empty-state">
+    <div v-else class="empty-state">
       <div class="empty-icon">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
           <path d="M9 18V5l12-2v13"/>
@@ -96,269 +119,69 @@
         </svg>
       </div>
       <h3>暂无音乐</h3>
-      <p>点击上方"上传音乐"按钮添加您的第一个音乐</p>
-    </div>
-
-    <!-- Loading State -->
-    <div v-if="isLoading" class="loading-state">
-      <div class="spinner"></div>
-      <p>加载中...</p>
+      <p>{{ searchQuery ? '没有找到匹配的音乐' : '还没有上传任何音乐文件' }}</p>
+      <button v-if="!searchQuery" class="empty-action" @click="showUploadModal = true">
+        上传音乐
+      </button>
     </div>
 
     <!-- Upload Modal -->
-    <div v-if="showUploadModal" class="modal-overlay" @click.self="closeUploadModal">
-      <div class="modal-card">
-        <div class="modal-header">
-          <h3>上传音乐</h3>
-          <button class="close-btn" @click="closeUploadModal">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <line x1="18" y1="6" x2="6" y2="18"/>
-              <line x1="6" y1="6" x2="18" y2="18"/>
-            </svg>
-          </button>
-        </div>
-
-        <div class="modal-body">
-          <div class="form-group">
-            <label>选择分组（可选）</label>
-            <select v-model="uploadGroupId" class="group-select">
-              <option :value="null">不分组</option>
-              <option v-for="group in musicGroups" :key="group.id" :value="group.id">
-                {{ group.name }}
-              </option>
-            </select>
-          </div>
-
-          <div
-            class="upload-area"
-            :class="{ 'drag-over': isDragOver }"
-            @dragover.prevent="isDragOver = true"
-            @dragleave.prevent="isDragOver = false"
-            @drop.prevent="handleFileDrop"
-            @click="fileInput?.click()"
-          >
-            <input
-              ref="fileInput"
-              type="file"
-              accept="audio/*"
-              hidden
-              @change="handleFileSelect"
-            >
-            <div v-if="!selectedFile" class="upload-placeholder">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                <path d="M9 18V5l12-2v13"/>
-                <circle cx="6" cy="18" r="3"/>
-                <circle cx="18" cy="16" r="3"/>
-              </svg>
-              <p>点击或拖拽音乐文件到此处</p>
-              <span>支持 MP3, WAV, FLAC 等格式</span>
-            </div>
-            <div v-else class="selected-file">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-                <polyline points="14 2 14 8 20 8"/>
-              </svg>
-              <div class="file-info">
-                <span class="file-name">{{ selectedFile.name }}</span>
-                <span class="file-size">{{ formatSize(selectedFile.size) }}</span>
-              </div>
-              <button class="clear-file" @click.stop="selectedFile = null">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <line x1="18" y1="6" x2="6" y2="18"/>
-                  <line x1="6" y1="6" x2="18" y2="18"/>
-                </svg>
-              </button>
-            </div>
-          </div>
-
-          <div v-if="uploadError" class="upload-error">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <circle cx="12" cy="12" r="10"/>
-              <line x1="12" y1="8" x2="12" y2="12"/>
-              <line x1="12" y1="16" x2="12.01" y2="16"/>
-            </svg>
-            <span>{{ uploadError }}</span>
-          </div>
-        </div>
-
-        <div class="modal-footer">
-          <button class="btn secondary" @click="closeUploadModal">取消</button>
-          <button
-            class="btn primary"
-            :disabled="!selectedFile || isUploading"
-            @click="uploadMusic"
-          >
-            <span v-if="isUploading" class="btn-spinner"></span>
-            <span v-else>开始上传</span>
-          </button>
-        </div>
-      </div>
-    </div>
+    <UploadModal
+      v-if="showUploadModal"
+      :groups="musicGroups"
+      :is-uploading="isUploading"
+      @close="showUploadModal = false"
+      @upload="handleUpload"
+    />
 
     <!-- Edit Modal -->
-    <div v-if="showEditModal" class="modal-overlay" @click.self="closeEditModal">
-      <div class="modal-card">
-        <div class="modal-header">
-          <h3>修改音乐名称</h3>
-          <button class="close-btn" @click="closeEditModal">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <line x1="18" y1="6" x2="6" y2="18"/>
-              <line x1="6" y1="6" x2="18" y2="18"/>
-            </svg>
-          </button>
-        </div>
+    <EditModal
+      v-if="showEditModal"
+      :music="selectedMusic"
+      :is-saving="isSaving"
+      @close="showEditModal = false"
+      @save="handleEdit"
+    />
 
-        <div class="modal-body">
-          <div class="form-group">
-            <label>音乐名称</label>
-            <input
-              type="text"
-              v-model="editForm.name"
-              placeholder="请输入音乐名称"
-            >
-          </div>
-        </div>
-
-        <div class="modal-footer">
-          <button class="btn secondary" @click="closeEditModal">取消</button>
-          <button
-            class="btn primary"
-            :disabled="!editForm.name.trim() || isEditing"
-            @click="saveEdit"
-          >
-            <span v-if="isEditing" class="btn-spinner"></span>
-            <span v-else>保存</span>
-          </button>
-        </div>
-      </div>
-    </div>
-
-    <!-- Change Group Modal -->
-    <div v-if="showChangeGroupModal" class="modal-overlay" @click.self="closeChangeGroupModal">
-      <div class="modal-card">
-        <div class="modal-header">
-          <h3>切换分组</h3>
-          <button class="close-btn" @click="closeChangeGroupModal">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <line x1="18" y1="6" x2="6" y2="18"/>
-              <line x1="6" y1="6" x2="18" y2="18"/>
-            </svg>
-          </button>
-        </div>
-
-        <div class="modal-body">
-          <div class="form-group">
-            <label>选择分组</label>
-            <select v-model="changeGroupForm.group_id" class="group-select">
-              <option :value="0">取消分组</option>
-              <option v-for="group in musicGroups" :key="group.id" :value="group.id">
-                {{ group.name }}
-              </option>
-            </select>
-          </div>
-        </div>
-
-        <div class="modal-footer">
-          <button class="btn secondary" @click="closeChangeGroupModal">取消</button>
-          <button
-            class="btn primary"
-            :disabled="isChangingGroup"
-            @click="saveChangeGroup"
-          >
-            <span v-if="isChangingGroup" class="btn-spinner"></span>
-            <span v-else>保存</span>
-          </button>
-        </div>
-      </div>
-    </div>
+    <!-- Group Modal -->
+    <GroupModal
+      v-if="showGroupModal"
+      :music="selectedMusic"
+      :groups="musicGroups"
+      :is-saving="isSaving"
+      @close="showGroupModal = false"
+      @save="handleChangeGroup"
+    />
 
     <!-- Delete Modal -->
-    <div v-if="showDeleteModal" class="modal-overlay" @click.self="closeDeleteModal">
-      <div class="modal-card">
-        <div class="modal-header">
-          <div class="warning-icon">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
-              <line x1="12" y1="9" x2="12" y2="13"/>
-              <line x1="12" y1="17" x2="12.01" y2="17"/>
-            </svg>
-          </div>
-          <h3>确认删除</h3>
-        </div>
+    <DeleteModal
+      v-if="showDeleteModal"
+      :music="selectedMusic"
+      :is-deleting="isDeleting"
+      @close="showDeleteModal = false"
+      @confirm="handleDelete"
+    />
 
-        <div class="modal-body">
-          <p>确定要删除音乐 "<strong>{{ musicToDelete?.original_name }}</strong>" 吗？</p>
-          <p class="warning-text">此操作不可恢复，音乐文件将被永久删除。</p>
-        </div>
-
-        <div class="modal-footer">
-          <button class="btn secondary" @click="closeDeleteModal">取消</button>
-          <button
-            class="btn danger"
-            :disabled="isDeleting"
-            @click="deleteMusic"
-          >
-            <span v-if="isDeleting" class="btn-spinner"></span>
-            <span v-else>确认删除</span>
-          </button>
-        </div>
-      </div>
-    </div>
-
-    <!-- Music Player Modal -->
-    <div v-if="showPlayerModal" class="modal-overlay player-overlay" @click.self="closePlayer">
-      <div class="player-modal">
-        <div class="player-header">
-          <h3>{{ currentMusic?.original_name }}</h3>
-          <button class="close-btn" @click="closePlayer">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <line x1="18" y1="6" x2="6" y2="18"/>
-              <line x1="6" y1="6" x2="18" y2="18"/>
-            </svg>
-          </button>
-        </div>
-        <div class="player-body">
-          <div class="audio-player-container">
-            <div class="music-cover">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                <path d="M9 18V5l12-2v13"/>
-                <circle cx="6" cy="18" r="3"/>
-                <circle cx="18" cy="16" r="3"/>
-              </svg>
-            </div>
-            <audio
-              v-if="currentMusic"
-              :src="getMusicUrl(currentMusic)"
-              controls
-              autoplay
-              class="audio-player"
-            ></audio>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Toast -->
-    <div v-if="toastMessage" class="toast" :class="toastType">
-      <svg v-if="toastType === 'success'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
-        <polyline points="22 4 12 14.01 9 11.01"/>
-      </svg>
-      <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <circle cx="12" cy="12" r="10"/>
-        <line x1="12" y1="8" x2="12" y2="12"/>
-        <line x1="12" y1="16" x2="12.01" y2="16"/>
-      </svg>
-      <span>{{ toastMessage }}</span>
-    </div>
+    <!-- Music Player -->
+    <MusicPlayer
+      v-if="showPlayerModal"
+      :music="selectedMusic"
+      @close="showPlayerModal = false"
+    />
   </div>
 </template>
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useAuthStore } from '@/stores/auth.js'
+import MusicCard from '@/components/music/MusicCard.vue'
+import MusicList from '@/components/music/MusicList.vue'
+import UploadModal from '@/components/music/UploadModal.vue'
+import EditModal from '@/components/music/EditModal.vue'
+import GroupModal from '@/components/music/GroupModal.vue'
+import DeleteModal from '@/components/music/DeleteModal.vue'
+import MusicPlayer from '@/components/music/MusicPlayer.vue'
 
-const API_BASE = 'http://localhost:8000'
 const authStore = useAuthStore()
 
 // State
@@ -367,46 +190,30 @@ const musicGroups = ref([])
 const isLoading = ref(false)
 const searchQuery = ref('')
 const selectedGroupId = ref(null)
+const viewMode = ref('card')
 
-// Upload modal state
+// Modal states
 const showUploadModal = ref(false)
-const fileInput = ref(null)
-const selectedFile = ref(null)
-const uploadGroupId = ref(null)
-const isDragOver = ref(false)
 const isUploading = ref(false)
-const uploadError = ref('')
-
-// Edit modal state
 const showEditModal = ref(false)
-const musicToEdit = ref(null)
-const editForm = ref({ name: '' })
-const isEditing = ref(false)
-
-// Change group modal state
-const showChangeGroupModal = ref(false)
-const musicToChangeGroup = ref(null)
-const changeGroupForm = ref({ group_id: 0 })
-const isChangingGroup = ref(false)
-
-// Delete modal state
+const showGroupModal = ref(false)
 const showDeleteModal = ref(false)
-const musicToDelete = ref(null)
+const showPlayerModal = ref(false)
+const selectedMusic = ref(null)
+const isSaving = ref(false)
 const isDeleting = ref(false)
 
-// Player modal state
-const showPlayerModal = ref(false)
-const currentMusic = ref(null)
-
-// Toast state
+// Toast
 const toastMessage = ref('')
 const toastType = ref('success')
 
 // Computed
 const filteredMusic = computed(() => {
-  if (!searchQuery.value.trim()) return musicList.value
+  if (!searchQuery.value) return musicList.value
   const query = searchQuery.value.toLowerCase()
-  return musicList.value.filter(m => m.original_name.toLowerCase().includes(query))
+  return musicList.value.filter(music =>
+    music.original_name.toLowerCase().includes(query)
+  )
 })
 
 // Lifecycle
@@ -420,11 +227,10 @@ async function loadMusic() {
   isLoading.value = true
   try {
     const params = new URLSearchParams()
-    params.append('file_type', 'music')
     if (selectedGroupId.value) {
       params.append('group_id', selectedGroupId.value)
     }
-    const response = await authStore.apiRequest(`/videos?${params.toString()}`)
+    const response = await authStore.apiRequest(`/music?${params}`)
     if (response.ok) {
       musicList.value = await response.json()
     } else {
@@ -439,130 +245,78 @@ async function loadMusic() {
 
 async function loadGroups() {
   try {
-    const response = await authStore.apiRequest('/groups?group_type=music')
+    const response = await authStore.apiRequest('/groups?type=music')
     if (response.ok) {
       musicGroups.value = await response.json()
     }
   } catch (err) {
-    console.error('加载分组失败', err)
+    console.error('Failed to load groups:', err)
   }
 }
 
 function getGroupName(groupId) {
+  if (!groupId) return null
   const group = musicGroups.value.find(g => g.id === groupId)
-  return group ? group.name : ''
+  return group ? group.name : null
 }
 
-function formatSize(bytes) {
-  if (bytes === 0) return '0 B'
-  const k = 1024
-  const sizes = ['B', 'KB', 'MB', 'GB']
-  const i = Math.floor(Math.log(bytes) / Math.log(k))
-  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]
+function handleSearch() {
+  // Search is handled by computed property
 }
 
-function formatDate(dateStr) {
-  const date = new Date(dateStr)
-  return date.toLocaleDateString('zh-CN', { year: 'numeric', month: 'short', day: 'numeric' })
+function toggleViewMode() {
+  viewMode.value = viewMode.value === 'card' ? 'list' : 'card'
 }
 
-function getMusicUrl(music) {
-  return `${API_BASE}${music.url}`
-}
-
-// Upload handlers
-function handleFileSelect(e) {
-  const file = e.target.files[0]
-  if (file) {
-    if (!file.type.startsWith('audio/')) {
-      uploadError.value = '请选择音乐文件'
-      return
-    }
-    selectedFile.value = file
-    uploadError.value = ''
-  }
-}
-
-function handleFileDrop(e) {
-  isDragOver.value = false
-  const file = e.dataTransfer.files[0]
-  if (file) {
-    if (!file.type.startsWith('audio/')) {
-      uploadError.value = '请拖拽音乐文件'
-      return
-    }
-    selectedFile.value = file
-    uploadError.value = ''
-  }
-}
-
-async function uploadMusic() {
-  if (!selectedFile.value) return
-
+async function handleUpload({ file, groupId }) {
   isUploading.value = true
-  uploadError.value = ''
-
   try {
     const formData = new FormData()
-    formData.append('file', selectedFile.value)
-    if (uploadGroupId.value) {
-      formData.append('group_id', uploadGroupId.value)
+    formData.append('file', file)
+    if (groupId) {
+      formData.append('group_id', groupId)
     }
 
-    const response = await authStore.apiRequest('/videos', {
+    const response = await authStore.apiRequest('/music', {
       method: 'POST',
       body: formData,
       headers: {}
     })
 
     if (response.ok) {
-      const newMusic = await response.json()
-      musicList.value.unshift(newMusic)
-      closeUploadModal()
-      showToast('上传成功', 'success')
+      showUploadModal.value = false
+      showToast('上传成功')
+      loadMusic()
     } else {
       const error = await response.json()
-      uploadError.value = error.detail || '上传失败'
+      showToast(error.detail || '上传失败', 'error')
     }
   } catch (err) {
-    uploadError.value = '网络错误'
+    showToast('网络错误', 'error')
   } finally {
     isUploading.value = false
   }
 }
 
-function closeUploadModal() {
-  showUploadModal.value = false
-  selectedFile.value = null
-  uploadGroupId.value = null
-  uploadError.value = ''
-}
-
-// Edit handlers
 function editMusic(music) {
-  musicToEdit.value = music
-  editForm.value.name = music.original_name
+  selectedMusic.value = music
   showEditModal.value = true
 }
 
-async function saveEdit() {
-  if (!editForm.value.name.trim() || !musicToEdit.value) return
+async function handleEdit(newName) {
+  if (!selectedMusic.value) return
 
-  isEditing.value = true
+  isSaving.value = true
   try {
-    const response = await authStore.apiRequest(`/videos/${musicToEdit.value.id}`, {
+    const response = await authStore.apiRequest(`/music/${selectedMusic.value.id}`, {
       method: 'PUT',
-      body: JSON.stringify({ name: editForm.value.name.trim() })
+      body: JSON.stringify({ original_name: newName })
     })
 
     if (response.ok) {
-      const updatedMusic = await response.json()
-      const index = musicList.value.findIndex(m => m.id === updatedMusic.id)
-      if (index !== -1) {
-        musicList.value[index] = updatedMusic
-      }
-      closeEditModal()
-      showToast('修改成功', 'success')
+      showEditModal.value = false
+      showToast('修改成功')
+      loadMusic()
     } else {
       const error = await response.json()
       showToast(error.detail || '修改失败', 'error')
@@ -570,41 +324,29 @@ async function saveEdit() {
   } catch (err) {
     showToast('网络错误', 'error')
   } finally {
-    isEditing.value = false
+    isSaving.value = false
   }
 }
 
-function closeEditModal() {
-  showEditModal.value = false
-  musicToEdit.value = null
-  editForm.value.name = ''
-}
-
-// Change group handlers
 function showChangeGroup(music) {
-  musicToChangeGroup.value = music
-  changeGroupForm.value.group_id = music.group_id || 0
-  showChangeGroupModal.value = true
+  selectedMusic.value = music
+  showGroupModal.value = true
 }
 
-async function saveChangeGroup() {
-  if (!musicToChangeGroup.value) return
+async function handleChangeGroup(groupId) {
+  if (!selectedMusic.value) return
 
-  isChangingGroup.value = true
+  isSaving.value = true
   try {
-    const response = await authStore.apiRequest(`/videos/${musicToChangeGroup.value.id}`, {
+    const response = await authStore.apiRequest(`/music/${selectedMusic.value.id}/group`, {
       method: 'PUT',
-      body: JSON.stringify({ group_id: changeGroupForm.value.group_id })
+      body: JSON.stringify({ group_id: groupId })
     })
 
     if (response.ok) {
-      const updatedMusic = await response.json()
-      const index = musicList.value.findIndex(m => m.id === updatedMusic.id)
-      if (index !== -1) {
-        musicList.value[index] = updatedMusic
-      }
-      closeChangeGroupModal()
-      showToast('分组切换成功', 'success')
+      showGroupModal.value = false
+      showToast('分组切换成功')
+      loadMusic()
     } else {
       const error = await response.json()
       showToast(error.detail || '切换分组失败', 'error')
@@ -612,35 +354,33 @@ async function saveChangeGroup() {
   } catch (err) {
     showToast('网络错误', 'error')
   } finally {
-    isChangingGroup.value = false
+    isSaving.value = false
   }
 }
 
-function closeChangeGroupModal() {
-  showChangeGroupModal.value = false
-  musicToChangeGroup.value = null
-  changeGroupForm.value.group_id = 0
+function playMusic(music) {
+  selectedMusic.value = music
+  showPlayerModal.value = true
 }
 
-// Delete handlers
 function confirmDelete(music) {
-  musicToDelete.value = music
+  selectedMusic.value = music
   showDeleteModal.value = true
 }
 
-async function deleteMusic() {
-  if (!musicToDelete.value) return
+async function handleDelete() {
+  if (!selectedMusic.value) return
 
   isDeleting.value = true
   try {
-    const response = await authStore.apiRequest(`/videos/${musicToDelete.value.id}`, {
+    const response = await authStore.apiRequest(`/music/${selectedMusic.value.id}`, {
       method: 'DELETE'
     })
 
     if (response.ok) {
-      musicList.value = musicList.value.filter(m => m.id !== musicToDelete.value.id)
-      closeDeleteModal()
-      showToast('删除成功', 'success')
+      showDeleteModal.value = false
+      showToast('删除成功')
+      loadMusic()
     } else {
       const error = await response.json()
       showToast(error.detail || '删除失败', 'error')
@@ -652,23 +392,6 @@ async function deleteMusic() {
   }
 }
 
-function closeDeleteModal() {
-  showDeleteModal.value = false
-  musicToDelete.value = null
-}
-
-// Player handlers
-function playMusic(music) {
-  currentMusic.value = music
-  showPlayerModal.value = true
-}
-
-function closePlayer() {
-  showPlayerModal.value = false
-  currentMusic.value = null
-}
-
-// Toast
 function showToast(message, type = 'success') {
   toastMessage.value = message
   toastType.value = type
@@ -680,25 +403,99 @@ function showToast(message, type = 'success') {
 
 <style lang="scss" scoped>
 .music-management {
-  min-height: 100%;
+  padding: 24px;
+  max-width: 1400px;
+  margin: 0 auto;
 }
 
+// Toast
+.toast {
+  position: fixed;
+  top: 24px;
+  right: 24px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 20px;
+  background: rgba(30, 41, 59, 0.95);
+  border: 1px solid rgba(99, 102, 241, 0.2);
+  border-radius: 12px;
+  color: #f8fafc;
+  font-weight: 500;
+  z-index: 2000;
+  backdrop-filter: blur(10px);
+  box-shadow: 0 10px 40px -10px rgba(0, 0, 0, 0.5);
+
+  svg {
+    width: 20px;
+    height: 20px;
+  }
+
+  &.success {
+    border-color: rgba(16, 185, 129, 0.3);
+    svg { color: #10b981; }
+  }
+
+  &.error {
+    border-color: rgba(239, 68, 68, 0.3);
+    svg { color: #ef4444; }
+  }
+}
+
+.toast-enter-active,
+.toast-leave-active {
+  transition: all 0.3s ease;
+}
+
+.toast-enter-from,
+.toast-leave-to {
+  opacity: 0;
+  transform: translateX(30px);
+}
+
+// Header
+.page-header {
+  margin-bottom: 32px;
+
+  .page-title {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 1.75rem;
+    font-weight: 700;
+    color: #f8fafc;
+    margin-bottom: 8px;
+
+    svg {
+      width: 32px;
+      height: 32px;
+      color: #10b981;
+    }
+  }
+
+  .page-subtitle {
+    color: #64748b;
+    font-size: 0.95rem;
+  }
+}
+
+// Toolbar
 .toolbar {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 24px;
   gap: 16px;
+  margin-bottom: 32px;
   flex-wrap: wrap;
 }
 
 .search-box {
   position: relative;
   flex: 1;
-  min-width: 200px;
+  min-width: 280px;
   max-width: 400px;
 
-  svg {
+  .search-icon {
     position: absolute;
     left: 14px;
     top: 50%;
@@ -711,8 +508,8 @@ function showToast(message, type = 'success') {
   input {
     width: 100%;
     padding: 12px 16px 12px 44px;
-    background: rgba(15, 23, 42, 0.6);
-    border: 1px solid rgba(99, 102, 241, 0.2);
+    background: rgba(30, 41, 59, 0.6);
+    border: 1px solid rgba(99, 102, 241, 0.15);
     border-radius: 12px;
     color: #f8fafc;
     font-size: 0.95rem;
@@ -720,12 +517,12 @@ function showToast(message, type = 'success') {
     transition: all 0.25s ease;
 
     &::placeholder {
-      color: #64748b;
+      color: #475569;
     }
 
     &:focus {
-      border-color: rgba(99, 102, 241, 0.5);
-      background: rgba(15, 23, 42, 0.8);
+      border-color: rgba(99, 102, 241, 0.4);
+      background: rgba(30, 41, 59, 0.8);
       box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
     }
   }
@@ -733,27 +530,52 @@ function showToast(message, type = 'success') {
 
 .toolbar-actions {
   display: flex;
-  gap: 12px;
   align-items: center;
+  gap: 12px;
 }
 
 .filter-select {
-  padding: 12px 16px;
+  padding: 12px 36px 12px 16px;
+  background: rgba(30, 41, 59, 0.6);
+  border: 1px solid rgba(99, 102, 241, 0.15);
+  border-radius: 12px;
+  color: #f8fafc;
+  font-size: 0.9rem;
+  outline: none;
+  cursor: pointer;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  transition: all 0.25s ease;
+
+  &:focus {
+    border-color: rgba(99, 102, 241, 0.4);
+  }
+}
+
+.view-toggle-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
   background: rgba(15, 23, 42, 0.6);
   border: 1px solid rgba(99, 102, 241, 0.2);
   border-radius: 12px;
-  color: #f8fafc;
-  font-size: 0.95rem;
-  outline: none;
+  color: #94a3b8;
   cursor: pointer;
+  transition: all 0.25s ease;
 
-  &:focus {
-    border-color: rgba(99, 102, 241, 0.5);
+  &:hover {
+    background: rgba(99, 102, 241, 0.1);
+    border-color: rgba(99, 102, 241, 0.4);
+    color: #f8fafc;
   }
 
-  option {
-    background: #1e293b;
-    color: #f8fafc;
+  svg {
+    width: 20px;
+    height: 20px;
   }
 }
 
@@ -783,167 +605,14 @@ function showToast(message, type = 'success') {
   }
 }
 
-.music-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  gap: 24px;
-}
-
-.music-card {
-  background: rgba(30, 41, 59, 0.6);
-  border: 1px solid rgba(99, 102, 241, 0.15);
-  border-radius: 16px;
-  padding: 20px;
-  display: flex;
-  align-items: flex-start;
-  gap: 16px;
-  transition: all 0.3s ease;
-
-  &:hover {
-    transform: translateY(-4px);
-    border-color: rgba(99, 102, 241, 0.3);
-    box-shadow: 0 12px 40px -10px rgba(99, 102, 241, 0.2);
-  }
-}
-
-.music-icon {
-  width: 64px;
-  height: 64px;
-  background: rgba(16, 185, 129, 0.15);
-  border-radius: 14px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-
-  svg {
-    width: 32px;
-    height: 32px;
-    color: #10b981;
-  }
-}
-
-.music-content {
-  flex: 1;
-  min-width: 0;
+// Loading State
+.loading-state {
   display: flex;
   flex-direction: column;
-  gap: 12px;
-}
-
-.music-info {
-  .music-name {
-    font-size: 0.95rem;
-    font-weight: 600;
-    color: #f8fafc;
-    margin-bottom: 8px;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-
-  .music-meta {
-    display: flex;
-    gap: 12px;
-    font-size: 0.8rem;
-    color: #64748b;
-    margin-bottom: 6px;
-  }
-
-  .music-group {
-    .group-badge {
-      display: inline-block;
-      padding: 2px 8px;
-      background: rgba(16, 185, 129, 0.15);
-      border-radius: 4px;
-      font-size: 0.75rem;
-      color: #34d399;
-    }
-  }
-}
-
-.music-actions {
-  display: flex;
-  gap: 8px;
-
-  .action-btn {
-    width: 36px;
-    height: 36px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: rgba(15, 23, 42, 0.6);
-    border: 1px solid rgba(99, 102, 241, 0.15);
-    border-radius: 10px;
-    color: #94a3b8;
-    cursor: pointer;
-    transition: all 0.2s ease;
-
-    svg {
-      width: 16px;
-      height: 16px;
-    }
-
-    &:hover {
-      background: rgba(99, 102, 241, 0.1);
-      border-color: rgba(99, 102, 241, 0.3);
-    }
-
-    &.edit:hover {
-      color: #6366f1;
-    }
-
-    &.group:hover {
-      color: #8b5cf6;
-    }
-
-    &.play:hover {
-      color: #10b981;
-    }
-
-    &.delete:hover {
-      color: #ef4444;
-      border-color: rgba(239, 68, 68, 0.3);
-    }
-  }
-}
-
-.empty-state {
-  text-align: center;
+  align-items: center;
+  justify-content: center;
   padding: 80px 20px;
-
-  .empty-icon {
-    width: 80px;
-    height: 80px;
-    margin: 0 auto 24px;
-    background: rgba(16, 185, 129, 0.1);
-    border-radius: 20px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-
-    svg {
-      width: 40px;
-      height: 40px;
-      color: #10b981;
-    }
-  }
-
-  h3 {
-    font-size: 1.25rem;
-    color: #f8fafc;
-    margin-bottom: 8px;
-  }
-
-  p {
-    color: #64748b;
-    font-size: 0.95rem;
-  }
-}
-
-.loading-state {
-  text-align: center;
-  padding: 80px 20px;
+  color: #64748b;
 
   .spinner {
     width: 48px;
@@ -951,12 +620,8 @@ function showToast(message, type = 'success') {
     border: 3px solid rgba(99, 102, 241, 0.2);
     border-top-color: #6366f1;
     border-radius: 50%;
-    animation: spin 1s linear infinite;
-    margin: 0 auto 16px;
-  }
-
-  p {
-    color: #64748b;
+    animation: spin 0.8s linear infinite;
+    margin-bottom: 16px;
   }
 }
 
@@ -964,466 +629,76 @@ function showToast(message, type = 'success') {
   to { transform: rotate(360deg); }
 }
 
-// Modal styles
-.modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.8);
+// Music Grid
+.music-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 20px;
+}
+
+// Empty State
+.empty-state {
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
-  z-index: 2000;
-  padding: 20px;
-  backdrop-filter: blur(4px);
-}
-
-.modal-card {
-  width: 100%;
-  max-width: 480px;
-  background: linear-gradient(145deg, rgba(30, 41, 59, 0.95) 0%, rgba(15, 23, 42, 0.98) 100%);
-  border: 1px solid rgba(99, 102, 241, 0.2);
-  border-radius: 20px;
-  overflow: hidden;
-  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
-}
-
-.modal-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 20px 24px;
-  border-bottom: 1px solid rgba(99, 102, 241, 0.1);
-
-  h3 {
-    font-size: 1.1rem;
-    font-weight: 600;
-    color: #f8fafc;
-    margin: 0;
-  }
-
-  .close-btn {
-    width: 32px;
-    height: 32px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: rgba(15, 23, 42, 0.6);
-    border: 1px solid rgba(99, 102, 241, 0.2);
-    border-radius: 8px;
-    color: #64748b;
-    cursor: pointer;
-    transition: all 0.2s ease;
-
-    &:hover {
-      background: rgba(99, 102, 241, 0.1);
-      color: #f8fafc;
-    }
-
-    svg {
-      width: 16px;
-      height: 16px;
-    }
-  }
-
-  .warning-icon {
-    width: 48px;
-    height: 48px;
-    margin: 0 auto 12px;
-    background: rgba(239, 68, 68, 0.1);
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-
-    svg {
-      width: 24px;
-      height: 24px;
-      color: #ef4444;
-    }
-  }
-}
-
-.modal-body {
-  padding: 24px;
-
-  .form-group {
-    margin-bottom: 20px;
-
-    label {
-      display: block;
-      margin-bottom: 8px;
-      font-size: 0.9rem;
-      color: #e2e8f0;
-    }
-
-    input,
-    select {
-      width: 100%;
-      padding: 12px 16px;
-      background: rgba(15, 23, 42, 0.6);
-      border: 1px solid rgba(99, 102, 241, 0.2);
-      border-radius: 10px;
-      color: #f8fafc;
-      font-size: 0.95rem;
-      outline: none;
-      transition: all 0.25s ease;
-
-      &:focus {
-        border-color: rgba(99, 102, 241, 0.5);
-        background: rgba(15, 23, 42, 0.8);
-        box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
-      }
-
-      &::placeholder {
-        color: #64748b;
-      }
-    }
-
-    select {
-      cursor: pointer;
-
-      option {
-        background: #1e293b;
-        color: #f8fafc;
-      }
-    }
-  }
-
-  p {
-    color: #94a3b8;
-    text-align: center;
-    margin-bottom: 8px;
-
-    strong {
-      color: #f8fafc;
-    }
-  }
-
-  .warning-text {
-    font-size: 0.85rem;
-    color: #ef4444;
-  }
-}
-
-.modal-footer {
-  display: flex;
-  gap: 12px;
-  padding: 0 24px 24px;
-
-  .btn {
-    flex: 1;
-    padding: 12px 20px;
-    border: none;
-    border-radius: 10px;
-    font-size: 0.95rem;
-    font-weight: 500;
-    cursor: pointer;
-    transition: all 0.25s ease;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-
-    &:disabled {
-      opacity: 0.6;
-      cursor: not-allowed;
-    }
-
-    &.secondary {
-      background: rgba(51, 65, 85, 0.6);
-      color: #94a3b8;
-
-      &:hover:not(:disabled) {
-        background: rgba(71, 85, 105, 0.8);
-      }
-    }
-
-    &.primary {
-      background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
-      color: white;
-      box-shadow: 0 4px 15px -3px rgba(99, 102, 241, 0.4);
-
-      &:hover:not(:disabled) {
-        transform: translateY(-2px);
-        box-shadow: 0 8px 25px -5px rgba(99, 102, 241, 0.5);
-      }
-    }
-
-    &.danger {
-      background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
-      color: white;
-      box-shadow: 0 4px 15px -3px rgba(239, 68, 68, 0.4);
-
-      &:hover:not(:disabled) {
-        transform: translateY(-2px);
-        box-shadow: 0 8px 25px -5px rgba(239, 68, 68, 0.5);
-      }
-    }
-
-    .btn-spinner {
-      width: 18px;
-      height: 18px;
-      border: 2px solid rgba(255, 255, 255, 0.3);
-      border-top-color: white;
-      border-radius: 50%;
-      animation: spin 0.8s linear infinite;
-    }
-  }
-}
-
-// Upload area
-.upload-area {
-  border: 2px dashed rgba(99, 102, 241, 0.3);
-  border-radius: 16px;
-  padding: 40px 24px;
+  padding: 80px 20px;
   text-align: center;
-  cursor: pointer;
-  transition: all 0.25s ease;
 
-  &:hover, &.drag-over {
-    border-color: rgba(99, 102, 241, 0.6);
-    background: rgba(99, 102, 241, 0.05);
-  }
-
-  .upload-placeholder {
-    svg {
-      width: 48px;
-      height: 48px;
-      color: #6366f1;
-      margin-bottom: 16px;
-    }
-
-    p {
-      color: #e2e8f0;
-      font-size: 1rem;
-      margin-bottom: 8px;
-    }
-
-    span {
-      color: #64748b;
-      font-size: 0.85rem;
-    }
-  }
-
-  .selected-file {
+  .empty-icon {
+    width: 80px;
+    height: 80px;
+    background: rgba(16, 185, 129, 0.1);
+    border-radius: 20px;
     display: flex;
     align-items: center;
-    gap: 12px;
-    padding: 16px;
-    background: rgba(99, 102, 241, 0.1);
-    border-radius: 12px;
+    justify-content: center;
+    margin-bottom: 24px;
 
     svg {
       width: 40px;
       height: 40px;
-      color: #6366f1;
-      flex-shrink: 0;
-    }
-
-    .file-info {
-      flex: 1;
-      text-align: left;
-
-      .file-name {
-        display: block;
-        color: #f8fafc;
-        font-weight: 500;
-        margin-bottom: 4px;
-        word-break: break-all;
-      }
-
-      .file-size {
-        color: #64748b;
-        font-size: 0.85rem;
-      }
-    }
-
-    .clear-file {
-      width: 32px;
-      height: 32px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      background: rgba(239, 68, 68, 0.1);
-      border: none;
-      border-radius: 8px;
-      color: #ef4444;
-      cursor: pointer;
-      transition: all 0.2s ease;
-
-      &:hover {
-        background: rgba(239, 68, 68, 0.2);
-      }
-
-      svg {
-        width: 16px;
-        height: 16px;
-      }
+      color: #10b981;
+      opacity: 0.6;
     }
   }
-}
-
-.upload-error {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-top: 16px;
-  padding: 12px 16px;
-  background: rgba(239, 68, 68, 0.1);
-  border: 1px solid rgba(239, 68, 68, 0.2);
-  border-radius: 10px;
-
-  svg {
-    width: 18px;
-    height: 18px;
-    color: #ef4444;
-    flex-shrink: 0;
-  }
-
-  span {
-    color: #fca5a5;
-    font-size: 0.9rem;
-  }
-}
-
-// Player modal
-.player-overlay {
-  padding: 40px;
-}
-
-.player-modal {
-  width: 100%;
-  max-width: 500px;
-  background: linear-gradient(145deg, rgba(30, 41, 59, 0.98) 0%, rgba(15, 23, 42, 0.99) 100%);
-  border: 1px solid rgba(99, 102, 241, 0.2);
-  border-radius: 20px;
-  overflow: hidden;
-  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7);
-}
-
-.player-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 16px 24px;
-  border-bottom: 1px solid rgba(99, 102, 241, 0.1);
 
   h3 {
-    font-size: 1rem;
+    font-size: 1.25rem;
     font-weight: 600;
     color: #f8fafc;
-    margin: 0;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    padding-right: 20px;
+    margin-bottom: 8px;
   }
 
-  .close-btn {
-    width: 36px;
-    height: 36px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: rgba(15, 23, 42, 0.6);
-    border: 1px solid rgba(99, 102, 241, 0.2);
-    border-radius: 10px;
+  p {
     color: #64748b;
+    margin-bottom: 24px;
+  }
+
+  .empty-action {
+    padding: 12px 24px;
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    border: none;
+    border-radius: 10px;
+    color: white;
+    font-size: 0.95rem;
+    font-weight: 500;
     cursor: pointer;
-    transition: all 0.2s ease;
-    flex-shrink: 0;
+    transition: all 0.25s ease;
+    box-shadow: 0 4px 15px -3px rgba(16, 185, 129, 0.4);
 
     &:hover {
-      background: rgba(99, 102, 241, 0.1);
-      color: #f8fafc;
+      transform: translateY(-2px);
+      box-shadow: 0 8px 25px -5px rgba(16, 185, 129, 0.5);
     }
-
-    svg {
-      width: 18px;
-      height: 18px;
-    }
-  }
-}
-
-.player-body {
-  padding: 40px;
-
-  .audio-player-container {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 24px;
-
-    .music-cover {
-      width: 120px;
-      height: 120px;
-      background: rgba(16, 185, 129, 0.15);
-      border-radius: 20px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-
-      svg {
-        width: 60px;
-        height: 60px;
-        color: #10b981;
-      }
-    }
-
-    .audio-player {
-      width: 100%;
-    }
-  }
-}
-
-// Toast
-.toast {
-  position: fixed;
-  bottom: 24px;
-  right: 24px;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 16px 24px;
-  border-radius: 12px;
-  font-size: 0.95rem;
-  font-weight: 500;
-  animation: slideIn 0.3s ease;
-  z-index: 3000;
-
-  &.success {
-    background: rgba(16, 185, 129, 0.15);
-    border: 1px solid rgba(16, 185, 129, 0.3);
-    color: #34d399;
-  }
-
-  &.error {
-    background: rgba(239, 68, 68, 0.15);
-    border: 1px solid rgba(239, 68, 68, 0.3);
-    color: #f87171;
-  }
-
-  svg {
-    width: 20px;
-    height: 20px;
-  }
-}
-
-@keyframes slideIn {
-  from {
-    transform: translateX(100%);
-    opacity: 0;
-  }
-  to {
-    transform: translateX(0);
-    opacity: 1;
   }
 }
 
 @media (max-width: 768px) {
+  .music-management {
+    padding: 16px;
+  }
+
   .music-grid {
     grid-template-columns: 1fr;
   }
@@ -1439,10 +714,6 @@ function showToast(message, type = 'success') {
 
   .toolbar-actions {
     justify-content: space-between;
-  }
-
-  .player-overlay {
-    padding: 20px;
   }
 }
 </style>

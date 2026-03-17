@@ -1,220 +1,212 @@
 <template>
-  <div class="profile-container">
-    <!-- User Info Card -->
-    <div class="profile-card">
-      <div class="profile-header">
-        <div class="avatar-section">
-          <div class="avatar-wrapper" @click="triggerAvatarUpload">
-            <img v-if="authStore.avatarUrl" :src="authStore.avatarUrl" alt="avatar" class="avatar-img">
-            <div v-else class="avatar-placeholder">
-              <span>{{ authStore.userInitial }}</span>
-            </div>
-            <div class="avatar-overlay">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
-                <circle cx="12" cy="13" r="4"/>
-              </svg>
-              <span>更换头像</span>
-            </div>
-          </div>
-          <input
-            ref="avatarInput"
-            type="file"
-            accept="image/*"
-            hidden
-            @change="handleAvatarChange"
-          >
-        </div>
-
-        <div class="user-info">
-          <h2 class="username">{{ authStore.currentUser?.username }}</h2>
-          <p class="user-email">{{ authStore.currentUser?.email }}</p>
-          <span class="user-badge">管理员</span>
-        </div>
+  <div class="profile-page">
+    <!-- Toast Notification -->
+    <Transition name="toast">
+      <div v-if="toastMessage" :class="['toast', toastType]">
+        <svg v-if="toastType === 'success'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+          <polyline points="22 4 12 14.01 9 11.01"/>
+        </svg>
+        <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="10"/>
+          <line x1="12" y1="8" x2="12" y2="12"/>
+          <line x1="12" y1="16" x2="12.01" y2="16"/>
+        </svg>
+        <span>{{ toastMessage }}</span>
       </div>
+    </Transition>
+
+    <!-- Page Header -->
+    <div class="page-header">
+      <h1 class="page-title">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+          <circle cx="12" cy="7" r="4"/>
+        </svg>
+        个人中心
+      </h1>
+      <p class="page-subtitle">管理您的个人信息和账户安全</p>
     </div>
 
-    <!-- Password Change Section -->
-    <div class="section-card">
-      <div class="section-header">
-        <div class="section-icon">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
-            <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
-          </svg>
+    <!-- Main Content - Two Column Layout -->
+    <div class="profile-content">
+      <!-- Left Column - User Info -->
+      <div class="left-column">
+        <!-- Avatar Card -->
+        <div class="profile-card avatar-card">
+          <div class="card-header">
+            <h3>头像设置</h3>
+          </div>
+          <div class="avatar-section">
+            <div class="avatar-wrapper">
+              <img v-if="authStore.avatarUrl" :src="authStore.avatarUrl" alt="Avatar" class="avatar-img">
+              <div v-else class="avatar-placeholder">
+                <span>{{ authStore.userInitial }}</span>
+              </div>
+              <div class="avatar-overlay" @click="triggerFileInput">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+                  <circle cx="12" cy="13" r="4"/>
+                </svg>
+                <span>更换头像</span>
+              </div>
+            </div>
+            <input
+              ref="fileInput"
+              type="file"
+              accept="image/*"
+              @change="handleAvatarChange"
+              hidden
+            >
+            <p class="avatar-hint">点击头像上传新图片</p>
+          </div>
         </div>
-        <div class="section-title">
-          <h3>修改密码</h3>
-          <p>更改您的登录密码</p>
+
+        <!-- User Info Card -->
+        <div class="profile-card info-card">
+          <div class="card-header">
+            <h3>基本信息</h3>
+          </div>
+          <div class="info-list">
+            <div class="info-item">
+              <span class="info-label">用户名</span>
+              <span class="info-value">{{ authStore.currentUser?.username }}</span>
+            </div>
+            <div class="info-item">
+              <span class="info-label">用户ID</span>
+              <span class="info-value">{{ authStore.currentUser?.id }}</span>
+            </div>
+            <div class="info-item">
+              <span class="info-label">注册时间</span>
+              <span class="info-value">{{ formatDate(authStore.currentUser?.created_at) }}</span>
+            </div>
+          </div>
         </div>
       </div>
 
-      <div class="form-content">
-        <div class="form-group">
-          <label>当前密码</label>
-          <div class="input-wrapper">
-            <input
-              :type="showCurrentPassword ? 'text' : 'password'"
-              v-model="passwordForm.currentPassword"
-              placeholder="请输入当前密码"
-            >
-            <button class="toggle-btn" @click="showCurrentPassword = !showCurrentPassword">
-              <svg v-if="showCurrentPassword" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
-                <circle cx="12" cy="12" r="3"/>
-              </svg>
-              <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/>
-                <line x1="1" y1="1" x2="23" y2="23"/>
-              </svg>
+      <!-- Right Column - Settings -->
+      <div class="right-column">
+        <!-- Password Change Card -->
+        <div class="profile-card password-card">
+          <div class="card-header">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+              <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+            </svg>
+            <h3>修改密码</h3>
+          </div>
+          <form @submit.prevent="changePassword" class="password-form">
+            <div class="form-group">
+              <label>当前密码</label>
+              <div class="input-wrapper">
+                <input
+                  v-model="passwordForm.currentPassword"
+                  :type="showCurrentPassword ? 'text' : 'password'"
+                  placeholder="请输入当前密码"
+                  required
+                >
+                <button type="button" class="toggle-btn" @click="showCurrentPassword = !showCurrentPassword">
+                  <svg v-if="showCurrentPassword" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                    <circle cx="12" cy="12" r="3"/>
+                  </svg>
+                  <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/>
+                    <line x1="1" y1="1" x2="23" y2="23"/>
+                  </svg>
+                </button>
+              </div>
+            </div>
+            <div class="form-group">
+              <label>新密码</label>
+              <div class="input-wrapper">
+                <input
+                  v-model="passwordForm.newPassword"
+                  :type="showNewPassword ? 'text' : 'password'"
+                  placeholder="请输入新密码"
+                  required
+                  minlength="6"
+                >
+                <button type="button" class="toggle-btn" @click="showNewPassword = !showNewPassword">
+                  <svg v-if="showNewPassword" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                    <circle cx="12" cy="12" r="3"/>
+                  </svg>
+                  <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/>
+                    <line x1="1" y1="1" x2="23" y2="23"/>
+                  </svg>
+                </button>
+              </div>
+            </div>
+            <div class="form-group">
+              <label>确认新密码</label>
+              <div class="input-wrapper">
+                <input
+                  v-model="passwordForm.confirmPassword"
+                  :type="showConfirmPassword ? 'text' : 'password'"
+                  placeholder="请再次输入新密码"
+                  required
+                  minlength="6"
+                >
+                <button type="button" class="toggle-btn" @click="showConfirmPassword = !showConfirmPassword">
+                  <svg v-if="showConfirmPassword" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                    <circle cx="12" cy="12" r="3"/>
+                  </svg>
+                  <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/>
+                    <line x1="1" y1="1" x2="23" y2="23"/>
+                  </svg>
+                </button>
+              </div>
+            </div>
+            <button type="submit" class="submit-btn" :disabled="isChangingPassword">
+              <span v-if="isChangingPassword" class="btn-spinner"></span>
+              <span v-else>修改密码</span>
             </button>
-          </div>
+          </form>
         </div>
-
-        <div class="form-group">
-          <label>新密码</label>
-          <div class="input-wrapper">
-            <input
-              :type="showNewPassword ? 'text' : 'password'"
-              v-model="passwordForm.newPassword"
-              placeholder="请输入新密码（至少6位）"
-            >
-            <button class="toggle-btn" @click="showNewPassword = !showNewPassword">
-              <svg v-if="showNewPassword" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
-                <circle cx="12" cy="12" r="3"/>
-              </svg>
-              <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/>
-                <line x1="1" y1="1" x2="23" y2="23"/>
-              </svg>
-            </button>
-          </div>
-        </div>
-
-        <div class="form-group">
-          <label>确认新密码</label>
-          <div class="input-wrapper">
-            <input
-              :type="showConfirmPassword ? 'text' : 'password'"
-              v-model="passwordForm.confirmPassword"
-              placeholder="请再次输入新密码"
-            >
-            <button class="toggle-btn" @click="showConfirmPassword = !showConfirmPassword">
-              <svg v-if="showConfirmPassword" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
-                <circle cx="12" cy="12" r="3"/>
-              </svg>
-              <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/>
-                <line x1="1" y1="1" x2="23" y2="23"/>
-              </svg>
-            </button>
-          </div>
-        </div>
-
-        <div class="password-strength" v-if="passwordForm.newPassword">
-          <div class="strength-bar">
-            <div class="strength-fill" :style="{ width: passwordStrength + '%', background: strengthColor }"></div>
-          </div>
-          <span class="strength-text" :style="{ color: strengthColor }">{{ strengthText }}</span>
-        </div>
-
-        <button
-          class="submit-btn"
-          :disabled="!isPasswordFormValid || isUpdatingPassword"
-          @click="updatePassword"
-        >
-          <span v-if="isUpdatingPassword" class="btn-spinner"></span>
-          <span v-else>修改密码</span>
-        </button>
       </div>
-    </div>
-
-    <!-- Toast -->
-    <div v-if="toastMessage" class="toast" :class="toastType">
-      <svg v-if="toastType === 'success'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
-        <polyline points="22 4 12 14.01 9 11.01"/>
-      </svg>
-      <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <circle cx="12" cy="12" r="10"/>
-        <line x1="12" y1="8" x2="12" y2="12"/>
-        <line x1="12" y1="16" x2="12.01" y2="16"/>
-      </svg>
-      <span>{{ toastMessage }}</span>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, reactive } from 'vue'
 import { useAuthStore } from '@/stores/auth.js'
 
 const authStore = useAuthStore()
+const fileInput = ref(null)
 
-// State
-const avatarInput = ref(null)
-const isUploadingAvatar = ref(false)
+// Toast
+const toastMessage = ref('')
+const toastType = ref('success')
 
-const passwordForm = ref({
+// Password form
+const passwordForm = reactive({
   currentPassword: '',
   newPassword: '',
   confirmPassword: ''
 })
+
 const showCurrentPassword = ref(false)
 const showNewPassword = ref(false)
 const showConfirmPassword = ref(false)
-const isUpdatingPassword = ref(false)
+const isChangingPassword = ref(false)
 
-// Toast state
-const toastMessage = ref('')
-const toastType = ref('success')
-
-// Computed
-const isPasswordFormValid = computed(() => {
-  return passwordForm.value.currentPassword &&
-         passwordForm.value.newPassword &&
-         passwordForm.value.newPassword.length >= 6 &&
-         passwordForm.value.newPassword === passwordForm.value.confirmPassword
-})
-
-const passwordStrength = computed(() => {
-  const pwd = passwordForm.value.newPassword
-  if (!pwd) return 0
-
-  let strength = 0
-  if (pwd.length >= 6) strength += 20
-  if (pwd.length >= 10) strength += 20
-  if (/[a-z]/.test(pwd)) strength += 15
-  if (/[A-Z]/.test(pwd)) strength += 15
-  if (/[0-9]/.test(pwd)) strength += 15
-  if (/[^a-zA-Z0-9]/.test(pwd)) strength += 15
-
-  return Math.min(strength, 100)
-})
-
-const strengthColor = computed(() => {
-  const strength = passwordStrength.value
-  if (strength < 40) return '#ef4444'
-  if (strength < 70) return '#f59e0b'
-  return '#10b981'
-})
-
-const strengthText = computed(() => {
-  const strength = passwordStrength.value
-  if (strength < 40) return '弱'
-  if (strength < 70) return '中'
-  return '强'
-})
-
-// Methods
-function triggerAvatarUpload() {
-  avatarInput.value?.click()
+function formatDate(dateStr) {
+  if (!dateStr) return '-'
+  const date = new Date(dateStr)
+  return date.toLocaleDateString('zh-CN', { year: 'numeric', month: 'long', day: 'numeric' })
 }
 
-async function handleAvatarChange(e) {
-  const file = e.target.files[0]
+function triggerFileInput() {
+  fileInput.value.click()
+}
+
+async function handleAvatarChange(event) {
+  const file = event.target.files[0]
   if (!file) return
 
   if (!file.type.startsWith('image/')) {
@@ -227,40 +219,40 @@ async function handleAvatarChange(e) {
     return
   }
 
-  isUploadingAvatar.value = true
   const result = await authStore.updateAvatar(file)
-
   if (result.success) {
-    showToast('头像上传成功', 'success')
+    showToast('头像更新成功')
   } else {
-    showToast(result.error, 'error')
+    showToast(result.error || '头像更新失败', 'error')
   }
-
-  isUploadingAvatar.value = false
-  avatarInput.value.value = ''
 }
 
-async function updatePassword() {
-  if (!isPasswordFormValid.value) return
+async function changePassword() {
+  if (passwordForm.newPassword !== passwordForm.confirmPassword) {
+    showToast('两次输入的新密码不一致', 'error')
+    return
+  }
 
-  isUpdatingPassword.value = true
+  if (passwordForm.newPassword.length < 6) {
+    showToast('新密码长度至少为6位', 'error')
+    return
+  }
+
+  isChangingPassword.value = true
   const result = await authStore.updatePassword(
-    passwordForm.value.currentPassword,
-    passwordForm.value.newPassword
+    passwordForm.currentPassword,
+    passwordForm.newPassword
   )
 
   if (result.success) {
-    showToast('密码修改成功', 'success')
-    passwordForm.value = {
-      currentPassword: '',
-      newPassword: '',
-      confirmPassword: ''
-    }
+    showToast('密码修改成功')
+    passwordForm.currentPassword = ''
+    passwordForm.newPassword = ''
+    passwordForm.confirmPassword = ''
   } else {
-    showToast(result.error, 'error')
+    showToast(result.error || '密码修改失败', 'error')
   }
-
-  isUpdatingPassword.value = false
+  isChangingPassword.value = false
 }
 
 function showToast(message, type = 'success') {
@@ -273,163 +265,264 @@ function showToast(message, type = 'success') {
 </script>
 
 <style lang="scss" scoped>
-.profile-container {
-  max-width: 600px;
+.profile-page {
+  padding: 24px;
+  max-width: 1200px;
   margin: 0 auto;
 }
 
-.profile-card {
-  background: rgba(30, 41, 59, 0.6);
-  border: 1px solid rgba(99, 102, 241, 0.15);
-  border-radius: 20px;
-  padding: 32px;
-  margin-bottom: 24px;
-}
-
-.profile-header {
+// Toast
+.toast {
+  position: fixed;
+  top: 24px;
+  right: 24px;
   display: flex;
   align-items: center;
-  gap: 24px;
+  gap: 12px;
+  padding: 16px 20px;
+  background: rgba(30, 41, 59, 0.95);
+  border: 1px solid rgba(99, 102, 241, 0.2);
+  border-radius: 12px;
+  color: #f8fafc;
+  font-weight: 500;
+  z-index: 2000;
+  backdrop-filter: blur(10px);
+  box-shadow: 0 10px 40px -10px rgba(0, 0, 0, 0.5);
 
-  .avatar-section {
-    flex-shrink: 0;
+  svg {
+    width: 20px;
+    height: 20px;
   }
 
-  .avatar-wrapper {
-    position: relative;
-    width: 100px;
-    height: 100px;
-    border-radius: 50%;
-    overflow: hidden;
-    cursor: pointer;
-
-    .avatar-img {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-    }
-
-    .avatar-placeholder {
-      width: 100%;
-      height: 100%;
-      background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-
-      span {
-        font-size: 2.5rem;
-        font-weight: 700;
-        color: white;
-      }
-    }
-
-    .avatar-overlay {
-      position: absolute;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      background: rgba(0, 0, 0, 0.6);
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      opacity: 0;
-      transition: opacity 0.25s ease;
-
-      svg {
-        width: 24px;
-        height: 24px;
-        color: white;
-        margin-bottom: 4px;
-      }
-
-      span {
-        font-size: 0.75rem;
-        color: white;
-      }
-    }
-
-    &:hover .avatar-overlay {
-      opacity: 1;
-    }
+  &.success {
+    border-color: rgba(16, 185, 129, 0.3);
+    svg { color: #10b981; }
   }
 
-  .user-info {
-    .username {
-      font-size: 1.5rem;
-      font-weight: 700;
-      color: #f8fafc;
-      margin-bottom: 4px;
-    }
-
-    .user-email {
-      font-size: 0.95rem;
-      color: #94a3b8;
-      margin-bottom: 12px;
-    }
-
-    .user-badge {
-      display: inline-block;
-      padding: 4px 12px;
-      background: linear-gradient(135deg, rgba(99, 102, 241, 0.2) 0%, rgba(139, 92, 246, 0.15) 100%);
-      border: 1px solid rgba(99, 102, 241, 0.3);
-      border-radius: 20px;
-      font-size: 0.75rem;
-      color: #a5b4fc;
-      font-weight: 500;
-    }
+  &.error {
+    border-color: rgba(239, 68, 68, 0.3);
+    svg { color: #ef4444; }
   }
 }
 
-.section-card {
-  background: rgba(30, 41, 59, 0.6);
-  border: 1px solid rgba(99, 102, 241, 0.15);
-  border-radius: 20px;
-  padding: 24px;
+.toast-enter-active,
+.toast-leave-active {
+  transition: all 0.3s ease;
 }
 
-.section-header {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  margin-bottom: 24px;
-  padding-bottom: 20px;
-  border-bottom: 1px solid rgba(99, 102, 241, 0.1);
+.toast-enter-from,
+.toast-leave-to {
+  opacity: 0;
+  transform: translateX(30px);
+}
 
-  .section-icon {
-    width: 48px;
-    height: 48px;
-    background: rgba(99, 102, 241, 0.1);
-    border-radius: 12px;
+// Page Header
+.page-header {
+  margin-bottom: 32px;
+
+  .page-title {
     display: flex;
     align-items: center;
-    justify-content: center;
+    gap: 12px;
+    font-size: 1.75rem;
+    font-weight: 700;
+    color: #f8fafc;
+    margin-bottom: 8px;
 
     svg {
-      width: 24px;
-      height: 24px;
+      width: 32px;
+      height: 32px;
       color: #6366f1;
     }
   }
 
-  .section-title {
-    h3 {
-      font-size: 1.1rem;
-      font-weight: 600;
-      color: #f8fafc;
-      margin-bottom: 4px;
-    }
-
-    p {
-      font-size: 0.85rem;
-      color: #64748b;
-    }
+  .page-subtitle {
+    color: #64748b;
+    font-size: 0.95rem;
   }
 }
 
-.form-content {
+// Main Content - Two Column Layout
+.profile-content {
+  display: grid;
+  grid-template-columns: 360px 1fr;
+  gap: 24px;
+
+  @media (max-width: 900px) {
+    grid-template-columns: 1fr;
+  }
+}
+
+// Cards
+.profile-card {
+  background: rgba(30, 41, 59, 0.6);
+  border: 1px solid rgba(99, 102, 241, 0.15);
+  border-radius: 16px;
+  overflow: hidden;
+  transition: all 0.3s ease;
+
+  &:hover {
+    border-color: rgba(99, 102, 241, 0.25);
+  }
+}
+
+.card-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 20px 24px;
+  border-bottom: 1px solid rgba(99, 102, 241, 0.1);
+
+  svg {
+    width: 22px;
+    height: 22px;
+    color: #6366f1;
+  }
+
+  h3 {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #f8fafc;
+    margin: 0;
+  }
+}
+
+// Left Column
+.left-column {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+// Avatar Card
+.avatar-card {
+  .avatar-section {
+    padding: 32px 24px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .avatar-wrapper {
+    position: relative;
+    width: 140px;
+    height: 140px;
+    border-radius: 50%;
+    overflow: hidden;
+    cursor: pointer;
+    border: 4px solid rgba(99, 102, 241, 0.2);
+    transition: all 0.3s ease;
+
+    &:hover {
+      border-color: rgba(99, 102, 241, 0.4);
+      transform: scale(1.02);
+
+      .avatar-overlay {
+        opacity: 1;
+      }
+    }
+  }
+
+  .avatar-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .avatar-placeholder {
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    span {
+      font-size: 3rem;
+      font-weight: 700;
+      color: white;
+    }
+  }
+
+  .avatar-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.6);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+
+    svg {
+      width: 32px;
+      height: 32px;
+      color: white;
+      margin-bottom: 8px;
+    }
+
+    span {
+      font-size: 0.85rem;
+      color: white;
+      font-weight: 500;
+    }
+  }
+
+  .avatar-hint {
+    margin-top: 16px;
+    font-size: 0.85rem;
+    color: #64748b;
+  }
+}
+
+// Info Card
+.info-card {
+  .info-list {
+    padding: 16px 24px 24px;
+  }
+
+  .info-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 14px 0;
+    border-bottom: 1px solid rgba(99, 102, 241, 0.1);
+
+    &:last-child {
+      border-bottom: none;
+    }
+  }
+
+  .info-label {
+    font-size: 0.9rem;
+    color: #94a3b8;
+  }
+
+  .info-value {
+    font-size: 0.95rem;
+    color: #f8fafc;
+    font-weight: 500;
+  }
+}
+
+// Right Column
+.right-column {
+  display: flex;
+  flex-direction: column;
+}
+
+// Password Card
+.password-card {
+  height: fit-content;
+
+  .password-form {
+    padding: 24px;
+  }
+
   .form-group {
     margin-bottom: 20px;
 
@@ -437,214 +530,121 @@ function showToast(message, type = 'success') {
       display: block;
       margin-bottom: 8px;
       font-size: 0.9rem;
-      color: #e2e8f0;
-    }
-
-    .input-wrapper {
-      position: relative;
-
-      input {
-        width: 100%;
-        padding: 12px 44px 12px 16px;
-        background: rgba(15, 23, 42, 0.6);
-        border: 1px solid rgba(99, 102, 241, 0.2);
-        border-radius: 10px;
-        color: #f8fafc;
-        font-size: 0.95rem;
-        outline: none;
-        transition: all 0.25s ease;
-
-        &::placeholder {
-          color: #64748b;
-        }
-
-        &:focus {
-          border-color: rgba(99, 102, 241, 0.5);
-          background: rgba(15, 23, 42, 0.8);
-          box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
-        }
-      }
-
-      .toggle-btn {
-        position: absolute;
-        right: 12px;
-        top: 50%;
-        transform: translateY(-50%);
-        width: 24px;
-        height: 24px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        background: transparent;
-        border: none;
-        color: #64748b;
-        cursor: pointer;
-        transition: color 0.2s ease;
-
-        &:hover {
-          color: #94a3b8;
-        }
-
-        svg {
-          width: 18px;
-          height: 18px;
-        }
-      }
+      color: #94a3b8;
     }
   }
 
-  .password-strength {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    margin-bottom: 24px;
+  .input-wrapper {
+    position: relative;
 
-    .strength-bar {
-      flex: 1;
-      height: 4px;
-      background: rgba(99, 102, 241, 0.1);
-      border-radius: 2px;
-      overflow: hidden;
+    input {
+      width: 100%;
+      padding: 12px 44px 12px 16px;
+      background: rgba(15, 23, 42, 0.6);
+      border: 1px solid rgba(99, 102, 241, 0.2);
+      border-radius: 10px;
+      color: #f8fafc;
+      font-size: 0.95rem;
+      outline: none;
+      transition: all 0.25s ease;
 
-      .strength-fill {
-        height: 100%;
-        border-radius: 2px;
-        transition: all 0.3s ease;
+      &::placeholder {
+        color: #475569;
+      }
+
+      &:focus {
+        border-color: rgba(99, 102, 241, 0.5);
+        background: rgba(15, 23, 42, 0.8);
+        box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
       }
     }
 
-    .strength-text {
-      font-size: 0.8rem;
-      font-weight: 500;
-      min-width: 20px;
+    .toggle-btn {
+      position: absolute;
+      right: 12px;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 32px;
+      height: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: transparent;
+      border: none;
+      color: #64748b;
+      cursor: pointer;
+      border-radius: 6px;
+      transition: all 0.2s;
+
+      &:hover {
+        color: #94a3b8;
+        background: rgba(255, 255, 255, 0.05);
+      }
+
+      svg {
+        width: 18px;
+        height: 18px;
+      }
     }
   }
 
   .submit-btn {
     width: 100%;
     padding: 14px 24px;
+    margin-top: 8px;
     background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
     border: none;
-    border-radius: 12px;
+    border-radius: 10px;
     color: white;
     font-size: 0.95rem;
     font-weight: 600;
     cursor: pointer;
-    transition: all 0.3s ease;
+    transition: all 0.25s ease;
     box-shadow: 0 4px 15px -3px rgba(99, 102, 241, 0.4);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
 
     &:hover:not(:disabled) {
       transform: translateY(-2px);
-      box-shadow: 0 8px 25px -5px rgba(99, 102, 241, 0.5);
+      box-shadow: 0 6px 20px -4px rgba(99, 102, 241, 0.5);
     }
 
     &:disabled {
-      opacity: 0.6;
+      opacity: 0.7;
       cursor: not-allowed;
     }
-
-    .btn-spinner {
-      width: 20px;
-      height: 20px;
-      border: 2px solid rgba(255, 255, 255, 0.3);
-      border-top-color: white;
-      border-radius: 50%;
-      animation: spin 0.8s linear infinite;
-    }
   }
+}
+
+.btn-spinner {
+  display: inline-block;
+  width: 18px;
+  height: 18px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top-color: white;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
 }
 
 @keyframes spin {
   to { transform: rotate(360deg); }
 }
 
-// Toast
-.toast {
-  position: fixed;
-  bottom: 24px;
-  right: 24px;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 16px 24px;
-  border-radius: 12px;
-  font-size: 0.95rem;
-  font-weight: 500;
-  animation: slideIn 0.3s ease;
-  z-index: 3000;
-
-  &.success {
-    background: rgba(16, 185, 129, 0.15);
-    border: 1px solid rgba(16, 185, 129, 0.3);
-    color: #34d399;
+// Responsive
+@media (max-width: 768px) {
+  .profile-page {
+    padding: 16px;
   }
 
-  &.error {
-    background: rgba(239, 68, 68, 0.15);
-    border: 1px solid rgba(239, 68, 68, 0.3);
-    color: #f87171;
+  .page-title {
+    font-size: 1.5rem;
   }
 
-  svg {
-    width: 20px;
-    height: 20px;
-  }
-}
-
-@keyframes slideIn {
-  from {
-    transform: translateX(100%);
-    opacity: 0;
-  }
-  to {
-    transform: translateX(0);
-    opacity: 1;
-  }
-}
-
-@media (max-width: 640px) {
-  .profile-card {
-    padding: 24px;
+  .avatar-card .avatar-wrapper {
+    width: 120px;
+    height: 120px;
   }
 
-  .profile-header {
-    flex-direction: column;
-    text-align: center;
-
-    .avatar-wrapper {
-      width: 80px;
-      height: 80px;
-
-      .avatar-placeholder span {
-        font-size: 2rem;
-      }
-    }
-  }
-
-  .section-card {
-    padding: 20px;
-  }
-
-  .section-header {
-    .section-icon {
-      width: 40px;
-      height: 40px;
-
-      svg {
-        width: 20px;
-        height: 20px;
-      }
-    }
-
-    .section-title {
-      h3 {
-        font-size: 1rem;
-      }
-    }
+  .avatar-placeholder span {
+    font-size: 2.5rem;
   }
 }
 </style>

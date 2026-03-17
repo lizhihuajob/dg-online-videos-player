@@ -20,6 +20,22 @@
             {{ group.name }}
           </option>
         </select>
+        <button class="view-toggle-btn" @click="toggleViewMode" :title="viewMode === 'card' ? '切换列表视图' : '切换卡片视图'">
+          <svg v-if="viewMode === 'card'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="8" y1="6" x2="21" y2="6"/>
+            <line x1="8" y1="12" x2="21" y2="12"/>
+            <line x1="8" y1="18" x2="21" y2="18"/>
+            <line x1="3" y1="6" x2="3.01" y2="6"/>
+            <line x1="3" y1="12" x2="3.01" y2="12"/>
+            <line x1="3" y1="18" x2="3.01" y2="18"/>
+          </svg>
+          <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="3" y="3" width="7" height="7"/>
+            <rect x="14" y="3" width="7" height="7"/>
+            <rect x="14" y="14" width="7" height="7"/>
+            <rect x="3" y="14" width="7" height="7"/>
+          </svg>
+        </button>
         <button class="upload-btn" @click="showUploadModal = true">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
@@ -31,8 +47,8 @@
       </div>
     </div>
 
-    <!-- Video Grid -->
-    <div v-if="filteredVideos.length > 0" class="video-grid">
+    <!-- Video Grid (Card View) -->
+    <div v-if="filteredVideos.length > 0 && viewMode === 'card'" class="video-grid">
       <div
         v-for="video in filteredVideos"
         :key="video.id"
@@ -84,6 +100,63 @@
             </svg>
           </button>
           <button class="action-btn delete" @click="confirmDelete(video)" title="删除">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="3 6 5 6 21 6"/>
+              <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Video List (List View) -->
+    <div v-if="filteredVideos.length > 0 && viewMode === 'list'" class="video-list">
+      <div class="list-header">
+        <span class="col-name">视频名称</span>
+        <span class="col-format">格式</span>
+        <span class="col-size">大小</span>
+        <span class="col-group">分组</span>
+        <span class="col-date">上传时间</span>
+        <span class="col-actions">操作</span>
+      </div>
+      <div
+        v-for="video in filteredVideos"
+        :key="video.id"
+        class="list-item"
+      >
+        <div class="col-name">
+          <div class="video-thumbnail-small" @click="playVideo(video)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+              <rect x="2" y="2" width="20" height="20" rx="2.18" ry="2.18"/>
+              <line x1="7" y1="2" x2="7" y2="22"/>
+              <line x1="17" y1="2" x2="17" y2="22"/>
+              <line x1="2" y1="12" x2="22" y2="12"/>
+            </svg>
+          </div>
+          <span class="video-name-text" :title="video.original_name">{{ video.original_name }}</span>
+        </div>
+        <span class="col-format">{{ video.format.toUpperCase() }}</span>
+        <span class="col-size">{{ formatSize(video.size) }}</span>
+        <span class="col-group">{{ getGroupName(video.group_id) || '-' }}</span>
+        <span class="col-date">{{ formatDate(video.created_at) }}</span>
+        <div class="col-actions">
+          <button class="action-btn-small edit" @click="editVideo(video)" title="修改名称">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+              <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+            </svg>
+          </button>
+          <button class="action-btn-small group" @click="showChangeGroup(video)" title="切换分组">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
+            </svg>
+          </button>
+          <button class="action-btn-small play" @click="playVideo(video)" title="播放">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polygon points="5 3 19 12 5 21 5 3"/>
+            </svg>
+          </button>
+          <button class="action-btn-small delete" @click="confirmDelete(video)" title="删除">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <polyline points="3 6 5 6 21 6"/>
               <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
@@ -365,6 +438,7 @@ const videoGroups = ref([])
 const isLoading = ref(false)
 const searchQuery = ref('')
 const selectedGroupId = ref(null)
+const viewMode = ref('card')
 
 // Upload modal state
 const showUploadModal = ref(false)
@@ -666,6 +740,11 @@ function closePlayer() {
   currentVideo.value = null
 }
 
+// View mode toggle
+function toggleViewMode() {
+  viewMode.value = viewMode.value === 'card' ? 'list' : 'card'
+}
+
 // Toast
 function showToast(message, type = 'success') {
   toastMessage.value = message
@@ -778,6 +857,31 @@ function showToast(message, type = 'success') {
   svg {
     width: 18px;
     height: 18px;
+  }
+}
+
+.view-toggle-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  background: rgba(15, 23, 42, 0.6);
+  border: 1px solid rgba(99, 102, 241, 0.2);
+  border-radius: 12px;
+  color: #94a3b8;
+  cursor: pointer;
+  transition: all 0.25s ease;
+
+  &:hover {
+    background: rgba(99, 102, 241, 0.1);
+    border-color: rgba(99, 102, 241, 0.4);
+    color: #f8fafc;
+  }
+
+  svg {
+    width: 20px;
+    height: 20px;
   }
 }
 
@@ -1425,6 +1529,155 @@ function showToast(message, type = 'success') {
   }
 }
 
+.video-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  background: rgba(99, 102, 241, 0.1);
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid rgba(99, 102, 241, 0.15);
+
+  .list-header {
+    display: grid;
+    grid-template-columns: 2fr 80px 100px 120px 120px 180px;
+    gap: 16px;
+    padding: 14px 20px;
+    background: rgba(30, 41, 59, 0.8);
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #94a3b8;
+
+    @media (max-width: 1024px) {
+      display: none;
+    }
+  }
+
+  .list-item {
+    display: grid;
+    grid-template-columns: 2fr 80px 100px 120px 120px 180px;
+    gap: 16px;
+    padding: 12px 20px;
+    background: rgba(30, 41, 59, 0.6);
+    align-items: center;
+    transition: all 0.2s ease;
+
+    &:hover {
+      background: rgba(30, 41, 59, 0.8);
+    }
+
+    @media (max-width: 1024px) {
+      grid-template-columns: 1fr auto;
+      gap: 12px;
+
+      .col-name {
+        grid-column: 1;
+      }
+
+      .col-actions {
+        grid-column: 2;
+      }
+
+      .col-format, .col-size, .col-group, .col-date {
+        display: none;
+      }
+    }
+  }
+
+  .col-name {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-width: 0;
+
+    .video-thumbnail-small {
+      width: 40px;
+      height: 40px;
+      background: rgba(99, 102, 241, 0.1);
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      flex-shrink: 0;
+      transition: all 0.2s ease;
+
+      &:hover {
+        background: rgba(99, 102, 241, 0.2);
+      }
+
+      svg {
+        width: 20px;
+        height: 20px;
+        color: #6366f1;
+      }
+    }
+
+    .video-name-text {
+      font-size: 0.9rem;
+      color: #f8fafc;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+  }
+
+  .col-format, .col-size, .col-group, .col-date {
+    font-size: 0.85rem;
+    color: #94a3b8;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .col-actions {
+    display: flex;
+    gap: 8px;
+    justify-content: flex-end;
+
+    .action-btn-small {
+      width: 32px;
+      height: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(15, 23, 42, 0.6);
+      border: 1px solid rgba(99, 102, 241, 0.15);
+      border-radius: 8px;
+      color: #94a3b8;
+      cursor: pointer;
+      transition: all 0.2s ease;
+
+      svg {
+        width: 14px;
+        height: 14px;
+      }
+
+      &:hover {
+        background: rgba(99, 102, 241, 0.1);
+        border-color: rgba(99, 102, 241, 0.3);
+      }
+
+      &.edit:hover {
+        color: #6366f1;
+      }
+
+      &.group:hover {
+        color: #8b5cf6;
+      }
+
+      &.play:hover {
+        color: #10b981;
+      }
+
+      &.delete:hover {
+        color: #ef4444;
+        border-color: rgba(239, 68, 68, 0.3);
+      }
+    }
+  }
+}
+
 @media (max-width: 768px) {
   .video-grid {
     grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
@@ -1438,6 +1691,10 @@ function showToast(message, type = 'success') {
 
   .search-box {
     max-width: none;
+  }
+
+  .toolbar-actions {
+    justify-content: space-between;
   }
 
   .player-overlay {
