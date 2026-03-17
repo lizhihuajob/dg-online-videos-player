@@ -161,6 +161,14 @@
             </svg>
             <span>{{ uploadError }}</span>
           </div>
+
+          <div v-if="groups.length > 0" class="group-select">
+            <label>选择分组</label>
+            <select v-model="selectedGroupId" class="form-select">
+              <option :value="null">不选择分组</option>
+              <option v-for="group in groups" :key="group.id" :value="group.id">{{ group.name }}</option>
+            </select>
+          </div>
         </div>
 
         <div class="modal-footer">
@@ -306,6 +314,8 @@ const selectedFile = ref(null)
 const isDragOver = ref(false)
 const isUploading = ref(false)
 const uploadError = ref('')
+const groups = ref([])
+const selectedGroupId = ref(null)
 
 // Edit modal state
 const showEditModal = ref(false)
@@ -336,6 +346,7 @@ const filteredVideos = computed(() => {
 // Lifecycle
 onMounted(() => {
   loadVideos()
+  loadGroups()
 })
 
 // Methods
@@ -352,6 +363,17 @@ async function loadVideos() {
     showToast('网络错误', 'error')
   } finally {
     isLoading.value = false
+  }
+}
+
+async function loadGroups() {
+  try {
+    const response = await authStore.apiRequest('/groups')
+    if (response.ok) {
+      groups.value = await response.json()
+    }
+  } catch (err) {
+    console.error('加载分组失败:', err)
   }
 }
 
@@ -407,6 +429,9 @@ async function uploadVideo() {
   try {
     const formData = new FormData()
     formData.append('file', selectedFile.value)
+    if (selectedGroupId.value) {
+      formData.append('group_id', selectedGroupId.value)
+    }
 
     const response = await authStore.apiRequest('/videos', {
       method: 'POST',
@@ -434,6 +459,7 @@ function closeUploadModal() {
   showUploadModal.value = false
   selectedFile.value = null
   uploadError.value = ''
+  selectedGroupId.value = null
 }
 
 // Edit handlers
@@ -906,6 +932,35 @@ function showToast(message, type = 'success') {
     }
 
     input {
+      width: 100%;
+      padding: 12px 16px;
+      background: rgba(15, 23, 42, 0.6);
+      border: 1px solid rgba(99, 102, 241, 0.2);
+      border-radius: 10px;
+      color: #f8fafc;
+      font-size: 0.95rem;
+      outline: none;
+      transition: all 0.25s ease;
+
+      &:focus {
+        border-color: rgba(99, 102, 241, 0.5);
+        background: rgba(15, 23, 42, 0.8);
+        box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+      }
+    }
+  }
+
+  .group-select {
+    margin-top: 16px;
+
+    label {
+      display: block;
+      margin-bottom: 8px;
+      font-size: 0.9rem;
+      color: #e2e8f0;
+    }
+
+    .form-select {
       width: 100%;
       padding: 12px 16px;
       background: rgba(15, 23, 42, 0.6);
