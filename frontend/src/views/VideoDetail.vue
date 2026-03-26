@@ -23,8 +23,11 @@
         <VideoPlayer
           :url="currentVideo.url"
           :format="currentVideo.format"
+          :show-prev-next="hasPlaylist"
           @ready="onPlayerReady"
           @error="onPlayerError"
+          @prev="playPrev"
+          @next="playNext"
         />
       </div>
 
@@ -172,6 +175,30 @@ const playVideo = (video) => {
     currentVideo.value = video
     // 滚动到播放器顶部
     window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+}
+
+const hasPlaylist = computed(() => {
+  return videos.value.length > 0
+})
+
+const playPrev = () => {
+  if (videos.value.length === 0) return
+  const currentIndex = videos.value.findIndex(v => v.id === currentVideo.value?.id)
+  if (currentIndex > 0) {
+    playVideo(videos.value[currentIndex - 1])
+  } else {
+    playVideo(videos.value[videos.value.length - 1])
+  }
+}
+
+const playNext = () => {
+  if (videos.value.length === 0) return
+  const currentIndex = videos.value.findIndex(v => v.id === currentVideo.value?.id)
+  if (currentIndex < videos.value.length - 1) {
+    playVideo(videos.value[currentIndex + 1])
+  } else {
+    playVideo(videos.value[0])
   }
 }
 
